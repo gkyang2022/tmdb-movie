@@ -242,6 +242,19 @@ export class TmdbService {
       append_to_response: 'credits,videos,recommendations',
     });
 
+    // zh-CN 语言下 videos 常为空，用 include_video_language 兑底（含英文/中文预告片）
+    let videoResults: any[] = data.videos?.results || [];
+    if (videoResults.length === 0) {
+      try {
+        const v = await this.request<any>(`/${type}/${id}/videos`, {
+          include_video_language: 'en,zh-CN,zh-TW',
+        });
+        videoResults = v.results || [];
+      } catch {
+        // 兑底失败则保持空
+      }
+    }
+
     const base = this.mapItem(data, type);
     const detail: MediaDetail = {
       ...base,
@@ -261,8 +274,9 @@ export class TmdbService {
         character: c.character || '',
         profile: this.posterUrl(c.profile_path),
       })),
-      videos: (data.videos?.results || [])
-        .filter((v: { site: string; type: string }) => v.site === 'YouTube' && v.type === 'Trailer')
+      videos: videoResults
+        .filter((v: { site: string; type: string }) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser'))
+        .sort((a: { type: string }, b: { type: string }) => (a.type === 'Trailer' ? -1 : 1) - (b.type === 'Trailer' ? -1 : 1))
         .slice(0, 3)
         .map((v: any) => ({ key: v.key, name: v.name, site: v.site, type: v.type })),
       recommendations: (data.recommendations?.results || [])
