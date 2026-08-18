@@ -1,5 +1,5 @@
 import request from './request';
-import type { ListResponse, MediaDetail, SettingsInfo, TransferResult, TrackerTask } from '@/types';
+import type { ListResponse, MediaDetail, SettingsInfo, TransferResult, TrackerTask, SearchResource } from '@/types';
 
 export const tmdbApi = {
   trending: (type = 'all', page = 1) =>
@@ -55,4 +55,14 @@ export const trackerApi = {
 export const authApi = {
   login: (username: string, password: string) =>
     request.post<{ token: string; username: string }>('/auth/login', { username, password }).then((r) => r.data),
+};
+
+export const pansouApi = {
+  search: (keyword: string, refresh = false) =>
+    request
+      .get<{ ok: boolean; keyword: string; count: number; items: SearchResource[]; error?: string; code?: string }>(
+        '/pansou/search',
+        { params: { keyword, refresh: refresh ? 1 : 0 } },
+      )
+      .then((r) => r.data),
 };

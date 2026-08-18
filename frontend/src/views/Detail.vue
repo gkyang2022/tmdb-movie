@@ -43,6 +43,9 @@
 
           <div class="actions">
             <el-button type="primary" @click="openTmdb">在 TMDB 查看</el-button>
+            <el-button type="warning" :loading="pansouLoading" @click="searchPansou">
+              🔍 搜盘
+            </el-button>
           </div>
         </div>
       </div>
@@ -85,14 +88,58 @@
         </div>
       </div>
     </template>
+
+    <!-- 盘搜结果弹窗 -->
+    <el-dialog v-model="pansouVisible" title="🔍 网盘搜索结果" width="680px" top="8vh">
+      <div v-if="pansouLoading" v-loading="true" class="pansou-loading">搜索中…</div>
+      <template v-else>
+        <el-alert
+          v-if="pansouError"
+          :type="pansouError.includes('未配置') ? 'warning' : 'error'"
+          :closable="false"
+          :title="pansouError"
+          class="pansou-alert"
+        />
+        <el-empty v-else-if="!pansouItems.length" description="没有搜到相关网盘资源" />
+        <div v-else class="pansou-list">
+          <div v-for="(item, idx) in pansouItems" :key="idx" class="pansou-item">
+            <div class="pansou-item-main">
+              <el-tag size="small" :type="pansouTagType(item.type)" effect="dark" class="pansou-type">
+                {{ pansouTypeName(item.type) }}
+              </el-tag>
+              <span class="pansou-name" :title="item.name">{{ item.name }}</span>
+            </div>
+            <div class="pansou-meta">
+              <span v-if="item.size && item.size !== '未知'">📦 {{ item.size }}</span>
+              <span v-if="item.source && item.source !== '未知'">🗂 {{ item.source }}</span>
+              <span v-if="item.time">🕒 {{ item.time }}</span>
+              <el-button
+                v-if="item.url"
+                type="primary"
+                link
+                size="small"
+                @click="openPansou(item.url)"
+              >
+                打开 / 转存
+              </el-button>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <el-button @click="pansouVisible = false">关闭</el-button>
+        <el-button v-if="pansouItems.length" @click="searchPansou(true)">刷新结果</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { tmdbApi } from '@/api/tmdb';
-import type { MediaDetail } from '@/types';
+import { ElMessage } from 'element-plus';
+import { tmdbApi, pansouApi } from '@/api/tmdb';
+import type { MediaDetail, SearchResource } from '@/types';
 import MediaCard from './components/MediaCard.vue';
 
 const route = useRoute();
@@ -121,6 +168,56 @@ async function load() {
 
 function openTmdb() {
   if (detail.value) window.open(detail.value.url, '_blank');
+}
+
+// ---------------- 盘搜 ----------------
+const pansouVisible = ref(false);
+const pansouLoading = ref(false);
+const pansouItems = ref<SearchResource[]>([]);
+const pansouError = ref('');
+
+function pansouKeyword(): string {
+  return (detail.value?.title || detail.value?.original_title || '').trim();
+}
+
+function pansouTagType(type: string): 'warning' | 'primary' | 'info' {
+  if (type === '115') return 'warning';
+  if (type === 'quark') return 'primary';
+  return 'info';
+}
+
+function pansouTypeName(type: string): string {
+  if (type === '115') return '115';
+  if (type === 'quark') return '夸克';
+  return (type || '网盘').toUpperCase();
+}
+
+function openPansou(url: string) {
+  if (url) window.open(url, '_blank');
+}
+
+async function searchPansou(refresh = false) {
+  const keyword = pansouKeyword();
+  if (!keyword) {
+    ElMessage.warning('没有可用的搜索关键词');
+    return;
+  }
+  pansouVisible.value = true;
+  pansouLoading.value = true;
+  pansouItems.value = [];
+  pansouError.value = '';
+  try {
+    const res = await pansouApi.search(keyword, refresh);
+    if (res.ok) {
+      pansouItems.value = res.items || [];
+    } else {
+      pansouError.value = res.error || '盘搜失败';
+    }
+  } catch (e: any) {
+    pansouError.value = e?.message || '盘搜请求失败';
+  } finally {
+    pansouLoading.value = false;
+  }
 }
 
 onMounted(load);
@@ -220,6 +317,49 @@ onMounted(load);
 }
 .actions {
   margin-top: 18px;
+}
+.pansou-loading {
+  text-align: center;
+  padding: 40px;
+  color: #9aa3b2;
+}
+.pansou-alert {
+  margin-bottom: 12px;
+}
+.pansou-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.pansou-item {
+  background: #171b23;
+  border: 1px solid #262c37;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.pansou-item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pansou-type {
+  flex-shrink: 0;
+}
+.pansou-name {
+  font-size: 13px;
+  color: #c8cdd6;
+  word-break: break-all;
+}
+.pansou-meta {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #8b93a1;
 }
 .section {
   margin-top: 40px;

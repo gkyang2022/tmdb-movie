@@ -17,7 +17,7 @@ function keySource(): 'settings' | 'env' | 'none' {
 const SENSITIVE_KEYS = ['tmdb_api_key', 'cookie_quark', 'cookie_115', 'telegram_bot_token'];
 
 /** 非敏感设置键（明文存储，原样回显） */
-const PLAIN_KEYS = ['folder_id_quark', 'folder_id_115', 'telegram_chat_ids', 'discord_webhook_urls', 'notification_targets'];
+const PLAIN_KEYS = ['pansou_url', 'folder_id_quark', 'folder_id_115', 'telegram_chat_ids', 'discord_webhook_urls', 'notification_targets'];
 
 /** 读取设置（脱敏回显） */
 settingsRouter.get('/', (_req: Request, res: Response) => {
@@ -37,6 +37,7 @@ settingsRouter.get('/', (_req: Request, res: Response) => {
     telegram_chat_ids: getSetting('telegram_chat_ids') || '',
     discord_webhook_urls: getSetting('discord_webhook_urls') || '',
     notification_targets: targets ? JSON.parse(targets) : ['telegram_chat', 'discord_channel'],
+    pansou_url: getSetting('pansou_url') || '',
   });
 });
 

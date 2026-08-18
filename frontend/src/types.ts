@@ -47,6 +47,8 @@ export interface SettingsInfo {
   telegram_chat_ids: string;
   discord_webhook_urls: string;
   notification_targets: string[];
+  // 盘搜
+  pansou_url: string;
 }
 
 export interface TrackerTask {
@@ -67,6 +69,15 @@ export interface TrackerTask {
   lastRunMessage?: string;
   status: 'active' | 'paused';
   createdAt: string;
+}
+
+export interface SearchResource {
+  name: string;
+  url: string;
+  size?: string;
+  source: string;
+  time?: string;
+  type: string; // 115 / quark / unknown
 }
 
 export interface TransferResult {

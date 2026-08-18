@@ -6,6 +6,7 @@ import { tmdbRouter } from './routes/tmdb.routes.js';
 import { settingsRouter } from './routes/settings.routes.js';
 import { transferRouter } from './routes/transfer.routes.js';
 import { trackerRouter } from './routes/tracker.routes.js';
+import { pansouRouter } from './routes/pansou.routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -27,6 +28,7 @@ export function createApp(): express.Express {
   app.use('/api/tmdb', authMiddleware, tmdbRouter);
   app.use('/api/transfer', authMiddleware, transferRouter);
   app.use('/api/tracker', authMiddleware, trackerRouter);
+  app.use('/api/pansou', authMiddleware, pansouRouter);
 
   // 404
   app.use((_req: Request, res: Response) => {

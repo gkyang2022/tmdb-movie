@@ -129,6 +129,31 @@
     </el-card>
 
     <el-card class="card" shadow="never">
+      <template #header><span>🔍 盘搜（Pansou 网盘搜索）</span></template>
+      <el-form label-width="120px" class="form">
+        <el-form-item label="Pansou 地址">
+          <el-input
+            v-model="pansouUrl"
+            placeholder="http://你的-pansou-实例:port（自部署 fish2018/pansou 后填写）"
+            class="key-input"
+          />
+          <span v-if="info?.pansou_url" class="masked-inline">当前：{{ info.pansou_url }}</span>
+        </el-form-item>
+        <el-form-item label=" ">
+          <el-button type="primary" :loading="saving" @click="saveAll">保存盘搜配置</el-button>
+        </el-form-item>
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          class="pansou-tip"
+          title="详情页「搜盘」按钮依赖此服务"
+          description="Pansou 是一个开源网盘资源搜索服务（支持 115 / 夸克）。需自行部署在 NAS 或服务器上，把实例地址填到这里即可。未配置时详情页点「搜盘」会提示去设置。"
+        />
+      </el-form>
+    </el-card>
+
+    <el-card class="card" shadow="never">
       <template #header><span>ℹ️ 当前环境信息</span></template>
       <el-descriptions :column="1" size="small" border>
         <el-descriptions-item label="Key 来源">
@@ -165,6 +190,8 @@ const telegramToken = ref('');
 const telegramChatIds = ref('');
 const discordWebhooks = ref('');
 const notifyTargets = ref<string[]>(['telegram_chat', 'discord_channel']);
+// 盘搜
+const pansouUrl = ref('');
 
 const hasKey = computed(() => !!info.value?.tmdb_api_key_masked || info.value?.source === 'env');
 const sourceLabel = computed(() => {
@@ -182,6 +209,7 @@ async function load() {
   telegramChatIds.value = info.value.telegram_chat_ids || '';
   discordWebhooks.value = info.value.discord_webhook_urls || '';
   notifyTargets.value = info.value.notification_targets?.length ? info.value.notification_targets : ['telegram_chat', 'discord_channel'];
+  pansouUrl.value = info.value.pansou_url || '';
   cookieQuark.value = '';
   cookie115.value = '';
   telegramToken.value = '';
@@ -216,6 +244,7 @@ async function saveAll() {
       telegram_chat_ids: telegramChatIds.value.trim(),
       discord_webhook_urls: discordWebhooks.value.trim(),
       notification_targets: JSON.stringify(notifyTargets.value),
+      pansou_url: pansouUrl.value.trim(),
     });
     ElMessage.success('配置已保存');
     await load();
@@ -333,5 +362,8 @@ onMounted(load);
   padding: 1px 6px;
   border-radius: 4px;
   color: #f0b429;
+}
+.pansou-tip {
+  margin-top: 6px;
 }
 </style>
