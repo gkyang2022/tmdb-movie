@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import { authRouter, authMiddleware } from './auth.js';
 import { tmdbRouter } from './routes/tmdb.routes.js';
 import { settingsRouter } from './routes/settings.routes.js';
+import { transferRouter } from './routes/transfer.routes.js';
+import { trackerRouter } from './routes/tracker.routes.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -23,6 +25,8 @@ export function createApp(): express.Express {
   // 需要登录的接口
   app.use('/api/settings', authMiddleware, settingsRouter);
   app.use('/api/tmdb', authMiddleware, tmdbRouter);
+  app.use('/api/transfer', authMiddleware, transferRouter);
+  app.use('/api/tracker', authMiddleware, trackerRouter);
 
   // 404
   app.use((_req: Request, res: Response) => {

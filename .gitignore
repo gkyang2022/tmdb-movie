@@ -36,3 +36,7 @@ backend/.test-pid
 # 部署辅助脚本（不入库）
 deploy-*.sh
 verify-*.sh
+
+# 测试 / 冒烟临时数据
+backend/.test-data/
+backend/.smoke-data/

@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { config, warnIfInsecure } from './config.js';
 import { logger } from './logger.js';
+import { trackerService } from './services/tracker.service.js';
 import fs from 'node:fs';
 
 warnIfInsecure();
@@ -13,4 +14,6 @@ const app = createApp();
 app.listen(config.port, () => {
   logger.info(`TMDB Movie backend 已启动: http://0.0.0.0:${config.port}`);
   logger.info(`数据目录: ${config.dataDir}`);
+  // 启动追剧调度器
+  trackerService.start();
 });

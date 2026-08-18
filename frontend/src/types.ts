@@ -37,4 +37,42 @@ export interface SettingsInfo {
   source: 'settings' | 'env' | 'none';
   language: string;
   image_proxy_base: string | null;
+  // 网盘转存
+  cookie_quark_masked: string;
+  cookie_115_masked: string;
+  folder_id_quark: string;
+  folder_id_115: string;
+  // 通知
+  telegram_bot_token_masked: string;
+  telegram_chat_ids: string;
+  discord_webhook_urls: string;
+  notification_targets: string[];
+}
+
+export interface TrackerTask {
+  id: number;
+  type: 'share' | 'tmdb';
+  name: string;
+  shareUrl?: string;
+  panType?: 'quark' | '115';
+  targetFolderId?: string;
+  lastFileIds?: string;
+  tmdbId?: number;
+  mediaType?: 'tv';
+  lastKnownEpisode?: string;
+  intervalValue: number;
+  intervalUnit: 'minute' | 'hour' | 'day';
+  lastRunAt?: string;
+  lastRunStatus?: 'success' | 'failed' | 'skipped';
+  lastRunMessage?: string;
+  status: 'active' | 'paused';
+  createdAt: string;
+}
+
+export interface TransferResult {
+  ok: boolean;
+  message: string;
+  names?: string[];
+  error?: string;
+  errorType?: 'user' | 'system';
 }

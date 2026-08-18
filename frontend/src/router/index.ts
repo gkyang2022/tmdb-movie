@@ -14,6 +14,8 @@ const router = createRouter({
         { path: 'rank', name: 'rank', component: () => import('@/views/Rank.vue') },
         { path: 'search', name: 'search', component: () => import('@/views/Search.vue') },
         { path: 'detail/:type/:id', name: 'detail', component: () => import('@/views/Detail.vue') },
+        { path: 'transfer', name: 'transfer', component: () => import('@/views/Transfer.vue') },
+        { path: 'tracker', name: 'tracker', component: () => import('@/views/Tracker.vue') },
         { path: 'settings', name: 'settings', component: () => import('@/views/Settings.vue') },
       ],
     },

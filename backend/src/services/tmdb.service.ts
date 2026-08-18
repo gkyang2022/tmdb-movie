@@ -287,6 +287,48 @@ export class TmdbService {
     return detail;
   }
 
+  /**
+   * 获取剧集追踪信息（追剧提醒用）：下一集/最新一集/季数集数
+   */
+  async getTvTrackingInfo(id: number): Promise<{
+    id: number;
+    name: string;
+    status: string;
+    next_episode_to_air: { name: string; season_number: number; episode_number: number; air_date: string | null } | null;
+    last_episode_to_air: { name: string; season_number: number; episode_number: number; air_date: string | null } | null;
+    number_of_seasons: number;
+    number_of_episodes: number;
+    poster_path: string | null;
+    url: string;
+  }> {
+    const data = await this.request<any>(`/tv/${id}`, {});
+    return {
+      id: data.id,
+      name: (data.name || '').trim(),
+      status: data.status || '',
+      next_episode_to_air: data.next_episode_to_air
+        ? {
+            name: data.next_episode_to_air.name || '',
+            season_number: data.next_episode_to_air.season_number || 0,
+            episode_number: data.next_episode_to_air.episode_number || 0,
+            air_date: data.next_episode_to_air.air_date || null,
+          }
+        : null,
+      last_episode_to_air: data.last_episode_to_air
+        ? {
+            name: data.last_episode_to_air.name || '',
+            season_number: data.last_episode_to_air.season_number || 0,
+            episode_number: data.last_episode_to_air.episode_number || 0,
+            air_date: data.last_episode_to_air.air_date || null,
+          }
+        : null,
+      number_of_seasons: data.number_of_seasons || 0,
+      number_of_episodes: data.number_of_episodes || 0,
+      poster_path: data.poster_path || null,
+      url: `https://www.themoviedb.org/tv/${data.id}`,
+    };
+  }
+
   /** 测试 Key 有效性（调 /configuration 轻量接口） */
   async testKey(key: string): Promise<{ valid: boolean; message: string }> {
     // 仅用传入的 key 测试，不写入存储

@@ -62,6 +62,73 @@
     </el-card>
 
     <el-card class="card" shadow="never">
+      <template #header><span>☁️ 网盘转存（夸克 / 115）</span></template>
+      <el-form label-width="120px" class="form">
+        <el-form-item label="夸克 Cookie">
+          <el-input
+            v-model="cookieQuark"
+            type="password"
+            show-password
+            placeholder="登录 pan.quark.cn 后从浏览器复制 Cookie（含 _upass2 等字段）"
+            class="key-input"
+          />
+          <span v-if="info?.cookie_quark_masked" class="masked-inline">当前：{{ info.cookie_quark_masked }}</span>
+        </el-form-item>
+        <el-form-item label="夸克目录 ID">
+          <el-input v-model="folderIdQuark" placeholder="留空为根目录（0）；可从分享链接 #/ 后或网盘 API 获取" class="key-input" />
+        </el-form-item>
+        <el-form-item label="115 Cookie">
+          <el-input
+            v-model="cookie115"
+            type="password"
+            show-password
+            placeholder="登录 115.com 后从浏览器复制 Cookie（含 UID、CID、SEID 等字段）"
+            class="key-input"
+          />
+          <span v-if="info?.cookie_115_masked" class="masked-inline">当前：{{ info.cookie_115_masked }}</span>
+        </el-form-item>
+        <el-form-item label="115 目录 ID">
+          <el-input v-model="folderId115" placeholder="留空为根目录（0）" class="key-input" />
+        </el-form-item>
+        <el-form-item label=" ">
+          <el-button type="primary" :loading="saving" @click="saveAll">保存网盘配置</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <el-card class="card" shadow="never">
+      <template #header><span>🔔 通知（追剧提醒 / 转存结果）</span></template>
+      <el-form label-width="120px" class="form">
+        <el-form-item label="Telegram Bot Token">
+          <el-input
+            v-model="telegramToken"
+            type="password"
+            show-password
+            placeholder="从 @BotFather 获取（可选）"
+            class="key-input"
+          />
+          <span v-if="info?.telegram_bot_token_masked" class="masked-inline">当前：{{ info.telegram_bot_token_masked }}</span>
+        </el-form-item>
+        <el-form-item label="接收 Chat ID">
+          <el-input v-model="telegramChatIds" placeholder="多个用逗号/空格分隔；向 @userinfobot 发送任意消息可查自己的 ID" class="key-input" />
+        </el-form-item>
+        <el-form-item label="Discord Webhook">
+          <el-input v-model="discordWebhooks" placeholder="https://discord.com/api/webhooks/...（可选，多个换行/逗号分隔）" class="key-input" />
+        </el-form-item>
+        <el-form-item label="通知渠道">
+          <el-checkbox-group v-model="notifyTargets">
+            <el-checkbox value="telegram_chat">Telegram</el-checkbox>
+            <el-checkbox value="discord_channel">Discord</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label=" ">
+          <el-button type="primary" :loading="saving" @click="saveAll">保存通知配置</el-button>
+          <el-button :loading="testingNotify" @click="testNotify">发送测试消息</el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <el-card class="card" shadow="never">
       <template #header><span>ℹ️ 当前环境信息</span></template>
       <el-descriptions :column="1" size="small" border>
         <el-descriptions-item label="Key 来源">
@@ -86,6 +153,18 @@ const apiKey = ref('');
 const info = ref<SettingsInfo | null>(null);
 const saving = ref(false);
 const testing = ref(false);
+const testingNotify = ref(false);
+
+// 网盘
+const cookieQuark = ref('');
+const folderIdQuark = ref('');
+const cookie115 = ref('');
+const folderId115 = ref('');
+// 通知
+const telegramToken = ref('');
+const telegramChatIds = ref('');
+const discordWebhooks = ref('');
+const notifyTargets = ref<string[]>(['telegram_chat', 'discord_channel']);
 
 const hasKey = computed(() => !!info.value?.tmdb_api_key_masked || info.value?.source === 'env');
 const sourceLabel = computed(() => {
@@ -97,9 +176,15 @@ const sourceLabel = computed(() => {
 
 async function load() {
   info.value = await settingsApi.get();
-  if (info.value.source === 'settings') {
-    apiKey.value = ''; // 不回显完整 Key，仅显示脱敏
-  }
+  apiKey.value = ''; // 不回显完整 Key，仅显示脱敏
+  folderIdQuark.value = info.value.folder_id_quark || '';
+  folderId115.value = info.value.folder_id_115 || '';
+  telegramChatIds.value = info.value.telegram_chat_ids || '';
+  discordWebhooks.value = info.value.discord_webhook_urls || '';
+  notifyTargets.value = info.value.notification_targets?.length ? info.value.notification_targets : ['telegram_chat', 'discord_channel'];
+  cookieQuark.value = '';
+  cookie115.value = '';
+  telegramToken.value = '';
 }
 
 async function saveKey() {
@@ -110,9 +195,29 @@ async function saveKey() {
   }
   saving.value = true;
   try {
-    await settingsApi.save(key);
+    await settingsApi.save({ tmdb_api_key: key });
     ElMessage.success('已保存，立即生效');
     apiKey.value = '';
+    await load();
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function saveAll() {
+  saving.value = true;
+  try {
+    await settingsApi.save({
+      cookie_quark: cookieQuark.value.trim(),
+      folder_id_quark: folderIdQuark.value.trim(),
+      cookie_115: cookie115.value.trim(),
+      folder_id_115: folderId115.value.trim(),
+      telegram_bot_token: telegramToken.value.trim(),
+      telegram_chat_ids: telegramChatIds.value.trim(),
+      discord_webhook_urls: discordWebhooks.value.trim(),
+      notification_targets: JSON.stringify(notifyTargets.value),
+    });
+    ElMessage.success('配置已保存');
     await load();
   } finally {
     saving.value = false;
@@ -135,6 +240,20 @@ async function testKey() {
     }
   } finally {
     testing.value = false;
+  }
+}
+
+async function testNotify() {
+  testingNotify.value = true;
+  try {
+    const res = await settingsApi.testNotify();
+    if (res.ok) {
+      ElMessage.success(res.message);
+    } else {
+      ElMessage.error(res.message);
+    }
+  } finally {
+    testingNotify.value = false;
   }
 }
 
@@ -174,7 +293,7 @@ onMounted(load);
   align-items: center;
 }
 .form {
-  max-width: 720px;
+  max-width: 760px;
 }
 .key-input {
   max-width: 520px;
@@ -187,6 +306,11 @@ onMounted(load);
   color: #6b7280;
   font-size: 12px;
   margin-left: 8px;
+}
+.masked-inline {
+  margin-left: 10px;
+  font-size: 12px;
+  color: #8b93a1;
 }
 .howto-title {
   font-size: 15px;

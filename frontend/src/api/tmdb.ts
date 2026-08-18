@@ -1,5 +1,5 @@
 import request from './request';
-import type { ListResponse, MediaDetail, SettingsInfo } from '@/types';
+import type { ListResponse, MediaDetail, SettingsInfo, TransferResult, TrackerTask } from '@/types';
 
 export const tmdbApi = {
   trending: (type = 'all', page = 1) =>
@@ -26,11 +26,30 @@ export const tmdbApi = {
 
 export const settingsApi = {
   get: () => request.get<SettingsInfo>('/settings').then((r) => r.data),
-  save: (tmdb_api_key: string) =>
-    request.put('/settings', { tmdb_api_key }).then((r) => r.data),
+  save: (payload: Record<string, string>) => request.put('/settings', payload).then((r) => r.data),
   test: (api_key: string) =>
     request.post<{ valid: boolean; message: string }>('/settings/tmdb/test', { api_key }).then((r) => r.data),
   clear: () => request.delete('/settings/tmdb').then((r) => r.data),
+  testNotify: () => request.post<{ ok: boolean; message: string }>('/settings/notify/test').then((r) => r.data),
+};
+
+export const transferApi = {
+  save: (shareUrl: string, type?: 'quark' | '115') =>
+    request.post<TransferResult>('/transfer', { shareUrl, type }).then((r) => r.data),
+  config: () =>
+    request.get<{ quark: { configured: boolean; folderId: string }; '115': { configured: boolean; folderId: string } }>(
+      '/transfer/config',
+    ).then((r) => r.data),
+};
+
+export const trackerApi = {
+  list: () => request.get<{ tasks: TrackerTask[] }>('/tracker/tasks').then((r) => r.data.tasks),
+  create: (payload: Record<string, unknown>) =>
+    request.post<{ ok: boolean; task: TrackerTask; error?: string }>('/tracker/tasks', payload).then((r) => r.data),
+  update: (id: number, payload: Record<string, unknown>) =>
+    request.put<{ ok: boolean; task: TrackerTask }>(`/tracker/tasks/${id}`, payload).then((r) => r.data),
+  remove: (id: number) => request.delete(`/tracker/tasks/${id}`).then((r) => r.data),
+  run: (id: number) => request.post<{ ok: boolean; message: string }>(`/tracker/tasks/${id}/run`).then((r) => r.data),
 };
 
 export const authApi = {
