@@ -641,6 +641,92 @@ export class CloudStorageService {
       return { success: false, message: `夸克转存异常: ${error.message}`, errorType: 'system' };
     }
   }
+
+  // ---------------- 目录浏览 ----------------
+
+  /** 列出网盘目录（仅文件夹） */
+  async listFolders(type: 'quark' | '115', cookie: string, parentId: string = '0'): Promise<{ id: string; name: string; isFolder: boolean }[]> {
+    if (type === 'quark') {
+      return this.listQuarkFolders(cookie, parentId);
+    } else {
+      return this.list115Folders(cookie, parentId);
+    }
+  }
+
+  /** 夸克：列出指定目录下的文件夹 */
+  private async listQuarkFolders(cookie: string, parentId: string): Promise<{ id: string; name: string; isFolder: boolean }[]> {
+    try {
+      const url = 'https://drive.quark.cn/1/clouddrive/file/sort';
+      const params = {
+        pr: 'ucpro',
+        fr: 'pc',
+        pdir_fid: parentId,
+        _page: 1,
+        _size: 200,
+        _sort: 'file_name:asc',
+        __t: Date.now(),
+      };
+
+      const res = await axios.get(url, {
+        params,
+        headers: {
+          Cookie: cookie,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+        timeout: 15000,
+      });
+
+      const list = res.data?.data?.list || [];
+      // 只返回文件夹
+      return list
+        .filter((item: any) => item.file_type === 0)
+        .map((item: any) => ({
+          id: item.fid,
+          name: item.file_name,
+          isFolder: true,
+        }));
+    } catch (error: any) {
+      logger.error('[CloudStorageService] listQuarkFolders error', { error });
+      throw new Error(`获取夸克目录失败: ${error.message}`);
+    }
+  }
+
+  /** 115：列出指定目录下的文件夹 */
+  private async list115Folders(cookie: string, parentId: string): Promise<{ id: string; name: string; isFolder: boolean }[]> {
+    try {
+      const url = 'https://webapi.115.com/files';
+      const params = {
+        aid: 1,
+        cid: parentId,
+        offset: 0,
+        limit: 1150,
+        show_dir: 1, // 只显示文件夹
+      };
+
+      const res = await axios.get(url, {
+        params,
+        headers: {
+          Cookie: cookie,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+        timeout: 15000,
+      });
+
+      const list = res.data?.data || [];
+      return list
+        .filter((item: any) => item.pc === 1) // pc=1 表示文件夹
+        .map((item: any) => ({
+          id: item.cid || item.fid,
+          name: item.n || item.name,
+          isFolder: true,
+        }));
+    } catch (error: any) {
+      logger.error('[CloudStorageService] list115Folders error', { error });
+      throw new Error(`获取115目录失败: ${error.message}`);
+    }
+  }
 }
 
 export const cloudStorageService = CloudStorageService.getInstance();

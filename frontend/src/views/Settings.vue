@@ -96,6 +96,62 @@
       </el-form>
     </el-card>
 
+    <!-- 分类目录配置 -->
+    <el-card class="card" shadow="never">
+      <template #header><span>📁 分类目录配置（可选）</span></template>
+      <el-alert type="info" :closable="false" class="alert-sm">
+        配置后，转存电影/剧集时会自动路由到对应目录。不配置则使用上方的基础目录 ID。
+      </el-alert>
+      
+      <el-tabs v-model="folderTab" class="folder-tabs">
+        <el-tab-pane label="夸克网盘" name="quark">
+          <el-form label-width="100px" class="form">
+            <el-form-item label="电影目录">
+              <el-input v-model="quarkFolders.movie" placeholder="目录 ID 或点击浏览">
+                <template #append>
+                  <el-button @click="openFolderPicker('quark', 'movie')">浏览</el-button>
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="剧集目录">
+              <el-input v-model="quarkFolders.tv" placeholder="目录 ID 或点击浏览">
+                <template #append>
+                  <el-button @click="openFolderPicker('quark', 'tv')">浏览</el-button>
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="默认目录">
+              <el-input v-model="quarkFolders.default" placeholder="未匹配类型时使用" />
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+        
+        <el-tab-pane label="115网盘" name="115">
+          <el-form label-width="100px" class="form">
+            <el-form-item label="电影目录">
+              <el-input v-model="folders115.movie" placeholder="目录 ID 或点击浏览">
+                <template #append>
+                  <el-button @click="openFolderPicker('115', 'movie')">浏览</el-button>
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="剧集目录">
+              <el-input v-model="folders115.tv" placeholder="目录 ID 或点击浏览">
+                <template #append>
+                  <el-button @click="openFolderPicker('115', 'tv')">浏览</el-button>
+                </template>
+              </el-input>
+            </el-form-item>
+            <el-form-item label="默认目录">
+              <el-input v-model="folders115.default" placeholder="未匹配类型时使用" />
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
+      </el-tabs>
+      
+      <el-button type="primary" :loading="saving" @click="saveFolderConfig">保存目录配置</el-button>
+    </el-card>
+
     <el-card class="card" shadow="never">
       <template #header><span>🔔 通知（追剧提醒 / 转存结果）</span></template>
       <el-form label-width="120px" class="form">
@@ -222,12 +278,46 @@
       </el-descriptions>
     </el-card>
   </div>
+  
+  <!-- 目录选择器弹窗 -->
+  <el-dialog v-model="folderPickerVisible" title="选择目录" width="600px">
+    <el-breadcrumb separator="/" class="breadcrumb">
+      <el-breadcrumb-item
+        v-for="(item, idx) in folderPathStack"
+        :key="item.id"
+        @click="enterFolderByPath(idx)"
+      >
+        <span class="breadcrumb-item">{{ item.name }}</span>
+      </el-breadcrumb-item>
+    </el-breadcrumb>
+    
+    <div v-loading="folderLoading" class="folder-list">
+      <div
+        v-for="folder in folderList"
+        :key="folder.id"
+        class="folder-item"
+        :class="{ selected: selectedFolder?.id === folder.id }"
+        @click="selectFolder(folder)"
+        @dblclick="enterFolder(folder)"
+      >
+        <el-icon size="20"><Folder /></el-icon>
+        <span class="folder-name">{{ folder.name }}</span>
+      </div>
+      <el-empty v-if="!folderLoading && folderList.length === 0" description="此目录为空" />
+    </div>
+    
+    <template #footer>
+      <el-button @click="folderPickerVisible = false">取消</el-button>
+      <el-button type="primary" :disabled="!selectedFolder" @click="confirmFolderSelection">确定</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Folder } from '@element-plus/icons-vue';
 import { authApi, settingsApi } from '@/api/tmdb';
 import { useUserStore } from '@/stores/user';
 import type { SettingsInfo } from '@/types';
@@ -243,6 +333,20 @@ const cookieQuark = ref('');
 const folderIdQuark = ref('');
 const cookie115 = ref('');
 const folderId115 = ref('');
+
+// 分类目录
+const folderTab = ref<'quark' | '115'>('quark');
+const quarkFolders = ref({ movie: '', tv: '', default: '' });
+const folders115 = ref({ movie: '', tv: '', default: '' });
+
+// 目录选择器
+const folderPickerVisible = ref(false);
+const folderLoading = ref(false);
+const folderList = ref<{ id: string; name: string; isFolder: boolean }[]>([]);
+const folderPathStack = ref<{ id: string; name: string }[]>([{ id: '0', name: '根目录' }]);
+const selectedFolder = ref<{ id: string; name: string; isFolder: boolean } | null>(null);
+const currentPickerType = ref<'quark' | '115'>('quark');
+const currentPickerField = ref<'movie' | 'tv' | 'default'>('movie');
 // 通知
 const telegramToken = ref('');
 const telegramChatIds = ref('');
@@ -315,6 +419,65 @@ async function saveAll() {
   } finally {
     saving.value = false;
   }
+}
+
+async function saveFolderConfig() {
+  saving.value = true;
+  try {
+    await settingsApi.save({
+      quark_folders: JSON.stringify(quarkFolders.value),
+      '115_folders': JSON.stringify(folders115.value),
+    });
+    ElMessage.success('目录配置已保存');
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function openFolderPicker(type: 'quark' | '115', field: 'movie' | 'tv' | 'default') {
+  currentPickerType.value = type;
+  currentPickerField.value = field;
+  folderPathStack.value = [{ id: '0', name: '根目录' }];
+  selectedFolder.value = null;
+  await loadFolders('0');
+  folderPickerVisible.value = true;
+}
+
+async function loadFolders(parentId: string) {
+  folderLoading.value = true;
+  try {
+    const { transferApi } = await import('@/api/tmdb');
+    const res = await transferApi.listFolders(currentPickerType.value, parentId);
+    folderList.value = res.folders || [];
+  } catch (e: any) {
+    ElMessage.error(e?.message || '加载目录失败');
+    folderList.value = [];
+  } finally {
+    folderLoading.value = false;
+  }
+}
+
+function selectFolder(folder: { id: string; name: string; isFolder: boolean }) {
+  selectedFolder.value = folder;
+}
+
+async function enterFolder(folder: { id: string; name: string; isFolder: boolean }) {
+  folderPathStack.value.push({ id: folder.id, name: folder.name });
+  selectedFolder.value = null;
+  await loadFolders(folder.id);
+}
+
+async function enterFolderByPath(idx: number) {
+  folderPathStack.value = folderPathStack.value.slice(0, idx + 1);
+  selectedFolder.value = null;
+  await loadFolders(folderPathStack.value[idx].id);
+}
+
+function confirmFolderSelection() {
+  if (!selectedFolder.value) return;
+  const folders = currentPickerType.value === 'quark' ? quarkFolders : folders115;
+  folders.value[currentPickerField.value] = selectedFolder.value.id;
+  folderPickerVisible.value = false;
 }
 
 async function testKey() {
@@ -507,5 +670,52 @@ onMounted(load);
   padding: 1px 6px;
   border-radius: 4px;
   color: #f0b429;
+}
+
+/* 目录选择器 */
+.alert-sm {
+  margin-bottom: 12px;
+}
+.folder-tabs {
+  margin-bottom: 16px;
+}
+.breadcrumb {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #1a1f28;
+  border-radius: 4px;
+}
+.breadcrumb-item {
+  cursor: pointer;
+}
+.breadcrumb-item:hover {
+  color: #409eff;
+}
+.folder-list {
+  min-height: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #262c37;
+  border-radius: 4px;
+  padding: 8px;
+}
+.folder-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+.folder-item:hover {
+  background: #232936;
+}
+.folder-item.selected {
+  background: #1a3a52;
+  border: 1px solid #409eff;
+}
+.folder-name {
+  flex: 1;
 }
 </style>

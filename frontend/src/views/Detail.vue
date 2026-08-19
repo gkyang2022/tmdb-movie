@@ -214,9 +214,10 @@ const pansouDone = ref<Record<number, boolean>>({});
 async function transferPansou(idx: number, item: SearchResource) {
   if (pansouDone.value[idx] || pansouBusy.value[idx]) return;
   const type: 'quark' | '115' = item.type === '115' ? '115' : 'quark';
+  const contentType = detail.value?.type; // 'movie' 或 'tv'
   pansouBusy.value[idx] = true;
   try {
-    const res = await transferApi.save(item.url, type);
+    const res = await transferApi.save(item.url, type, contentType);
     if (res.ok) {
       pansouDone.value[idx] = true;
       ElMessage.success(res.message ? `转存成功：${res.message}` : '转存成功');

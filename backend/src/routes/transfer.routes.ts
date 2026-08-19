@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { getSetting } from '../settingsStore.js';
+import { getSetting, getFolderId } from '../settingsStore.js';
 import { cloudStorageService } from '../services/cloud-storage.service.js';
 
 export const transferRouter = Router();
@@ -7,8 +7,8 @@ export const transferRouter = Router();
 /**
  * 网盘转存
  * POST /api/transfer
- * body: { shareUrl: string, type?: 'quark' | '115'（自动识别兜底） }
- * 转存目标：settings 中 cookie_{type} + folder_id_{type}
+ * body: { shareUrl: string, type?: 'quark' | '115', contentType?: 'movie' | 'tv' | 'anime' }
+ * 转存目标：根据 contentType 路由到对应分类目录
  */
 transferRouter.post('/', async (req: Request, res: Response) => {
   const shareUrl = String(req.body?.shareUrl || '').trim();
@@ -18,8 +18,9 @@ transferRouter.post('/', async (req: Request, res: Response) => {
   }
 
   const type = String(req.body?.type || '') === '115' ? '115' : 'quark';
+  const contentType = req.body?.contentType as 'movie' | 'tv' | 'anime' | undefined;
   const cookie = getSetting(type === '115' ? 'cookie_115' : 'cookie_quark');
-  const folderId = getSetting(type === '115' ? 'folder_id_115' : 'folder_id_quark') || '0';
+  const folderId = getFolderId(type, contentType);
 
   if (!cookie) {
     res.status(400).json({ error: `未配置${type === '115' ? '115' : '夸克'} Cookie，请先在「设置」页添加`, code: 'NOT_CONFIGURED' });
@@ -58,4 +59,23 @@ transferRouter.get('/config', (_req: Request, res: Response) => {
       folderId: getSetting('folder_id_115') || '0',
     },
   });
+});
+
+/** 获取网盘目录列表 */
+transferRouter.get('/folders', async (req: Request, res: Response) => {
+  try {
+    const type = req.query.type === '115' ? '115' : 'quark';
+    const parentId = String(req.query.parentId || '0');
+    const cookie = getSetting(type === '115' ? 'cookie_115' : 'cookie_quark');
+
+    if (!cookie) {
+      res.status(400).json({ error: `未配置${type === '115' ? '115' : '夸克'} Cookie`, code: 'NOT_CONFIGURED' });
+      return;
+    }
+
+    const folders = await cloudStorageService.listFolders(type, cookie, parentId);
+    res.json({ folders });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || '获取目录失败' });
+  }
 });

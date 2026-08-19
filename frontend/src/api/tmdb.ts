@@ -37,12 +37,14 @@ export const settingsApi = {
 };
 
 export const transferApi = {
-  save: (shareUrl: string, type?: 'quark' | '115') =>
-    request.post<TransferResult>('/transfer', { shareUrl, type }).then((r) => r.data),
+  save: (shareUrl: string, type?: 'quark' | '115', contentType?: 'movie' | 'tv' | 'anime') =>
+    request.post<TransferResult>('/transfer', { shareUrl, type, contentType }).then((r) => r.data),
   config: () =>
     request.get<{ quark: { configured: boolean; folderId: string }; '115': { configured: boolean; folderId: string } }>(
       '/transfer/config',
     ).then((r) => r.data),
+  listFolders: (type: 'quark' | '115', parentId: string = '0') =>
+    request.get<{ folders: import('@/types').FolderItem[] }>('/transfer/folders', { params: { type, parentId } }).then((r) => r.data),
 };
 
 export const trackerApi = {

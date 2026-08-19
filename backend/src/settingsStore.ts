@@ -92,3 +92,22 @@ export function getSettingMasked(key: string): string {
   if (val.length <= 8) return '****';
   return `${val.slice(0, 3)}****${val.slice(-4)}`;
 }
+
+/** 获取分类目录ID（根据内容类型路由到对应目录） */
+export function getFolderId(type: 'quark' | '115', contentType?: 'movie' | 'tv' | 'anime'): string {
+  const foldersKey = type === '115' ? '115_folders' : 'quark_folders';
+  const foldersStr = getSetting(foldersKey);
+  
+  // 未配置分类目录，回退到旧的单目录配置
+  if (!foldersStr) {
+    return getSetting(`folder_id_${type}`) || '0';
+  }
+  
+  try {
+    const folders = JSON.parse(foldersStr);
+    // 按类型查找，未找到则用 default
+    return folders[contentType || 'default'] || folders.default || '0';
+  } catch {
+    return '0';
+  }
+}

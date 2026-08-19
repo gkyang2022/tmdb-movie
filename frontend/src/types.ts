@@ -87,3 +87,9 @@ export interface TransferResult {
   error?: string;
   errorType?: 'user' | 'system';
 }
+
+export interface FolderItem {
+  id: string;
+  name: string;
+  isFolder: boolean;
+}
