@@ -2,7 +2,7 @@
   <div class="rank" ref="containerRef">
     <div class="rank-header">
       <h1>{{ mediaType === 'movie' ? '🎬 电影' : '📺 剧集' }}</h1>
-      <p class="subtitle">{{ mediaType === 'movie' ? '正在上映' : '正在播出' }}</p>
+      <p class="subtitle">{{ mediaType === 'movie' ? '热门电影' : '正在播出' }}</p>
     </div>
 
     <div class="grid-container">
@@ -85,7 +85,7 @@ async function loadMore() {
   loading.value = true;
   try {
     const res = mediaType.value === 'movie'
-      ? await tmdbApi.nowPlaying(page.value)
+      ? await tmdbApi.popular('movie', page.value)
       : await tmdbApi.onTheAir(page.value);
     
     // 追加数据
