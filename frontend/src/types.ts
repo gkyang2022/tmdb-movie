@@ -42,6 +42,8 @@ export interface SettingsInfo {
   cookie_115_masked: string;
   folder_id_quark: string;
   folder_id_115: string;
+  quark_folders?: { movie: string; tv: string; default: string };
+  folders_115?: { movie: string; tv: string; default: string };
   // 通知
   telegram_bot_token_masked: string;
   telegram_chat_ids: string;

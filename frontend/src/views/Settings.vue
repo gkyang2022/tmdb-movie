@@ -374,6 +374,23 @@ async function load() {
   apiKey.value = ''; // 不回显完整 Key，仅显示脱敏
   folderIdQuark.value = info.value.folder_id_quark || '';
   folderId115.value = info.value.folder_id_115 || '';
+  
+  // 加载分类目录配置
+  if (info.value.quark_folders) {
+    quarkFolders.value = {
+      movie: info.value.quark_folders.movie || '',
+      tv: info.value.quark_folders.tv || '',
+      default: info.value.quark_folders.default || '',
+    };
+  }
+  if (info.value.folders_115) {
+    folders115.value = {
+      movie: info.value.folders_115.movie || '',
+      tv: info.value.folders_115.tv || '',
+      default: info.value.folders_115.default || '',
+    };
+  }
+  
   telegramChatIds.value = info.value.telegram_chat_ids || '';
   discordWebhooks.value = info.value.discord_webhook_urls || '';
   notifyTargets.value = info.value.notification_targets?.length ? info.value.notification_targets : ['telegram_chat', 'discord_channel'];
