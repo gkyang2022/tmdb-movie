@@ -1,14 +1,14 @@
 <template>
-  <div class="rank">
+  <div class="rank" ref="containerRef">
     <div class="rank-header">
       <h1>{{ mediaType === 'movie' ? '🎬 电影' : '📺 剧集' }}</h1>
       <p class="subtitle">{{ mediaType === 'movie' ? '正在上映' : '正在播出' }}</p>
     </div>
 
-    <div v-loading="loading" class="grid-container">
+    <div class="grid-container">
       <div
         v-for="(item, idx) in items"
-        :key="item.id"
+        :key="`${item.id}-${idx}`"
         class="media-card"
         @click="goDetail(item)"
       >
@@ -46,68 +46,111 @@
       </div>
     </div>
 
-    <div v-if="totalPages > 1" class="pager">
-      <el-pagination
-        layout="prev, pager, next"
-        :total="totalResults"
-        :page-size="80"
-        :current-page="page"
-        @current-change="load"
-      />
+    <!-- 加载状态 -->
+    <div v-if="loading" class="loading-more">
+      <el-icon class="is-loading"><Loading /></el-icon>
+      <span>加载中...</span>
+    </div>
+
+    <!-- 加载完毕 -->
+    <div v-else-if="noMore" class="no-more">
+      已加载全部内容
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { Loading } from '@element-plus/icons-vue';
 import { tmdbApi } from '@/api/tmdb';
 import type { MediaItem } from '@/types';
 
 const route = useRoute();
 const router = useRouter();
+const containerRef = ref<HTMLElement | null>(null);
 
-// 根据 URL 路径决定类型：/rank/movie 或 /rank/tv
+// 根据 URL 路径决定类型
 const mediaType = ref<'movie' | 'tv'>(route.path.includes('/tv') ? 'tv' : 'movie');
 const items = ref<MediaItem[]>([]);
 const page = ref(1);
 const totalPages = ref(1);
-const totalResults = ref(0);
 const loading = ref(false);
+const noMore = ref(false);
 
-async function load(p = 1) {
+// 瀑布流加载
+async function loadMore() {
+  if (loading.value || noMore.value) return;
+  
   loading.value = true;
   try {
-    // 电影分类用 nowPlaying，剧集分类用 onTheAir
-    const res = mediaType.value === 'movie' 
-      ? await tmdbApi.nowPlaying(p)
-      : await tmdbApi.onTheAir(p);
+    const res = mediaType.value === 'movie'
+      ? await tmdbApi.nowPlaying(page.value)
+      : await tmdbApi.onTheAir(page.value);
     
-    items.value = res.items;
-    page.value = res.page;
+    // 追加数据
+    items.value = [...items.value, ...res.items];
+    page.value = res.page + 1;
     totalPages.value = res.totalPages;
-    totalResults.value = res.totalResults;
+    
+    // 判断是否加载完毕
+    if (res.page >= res.totalPages || res.items.length === 0) {
+      noMore.value = true;
+    }
+  } catch (err) {
+    console.error('加载失败', err);
   } finally {
     loading.value = false;
   }
+}
+
+// 重置并加载
+function resetAndLoad() {
+  items.value = [];
+  page.value = 1;
+  totalPages.value = 1;
+  noMore.value = false;
+  loadMore();
 }
 
 function goDetail(item: MediaItem) {
   router.push(`/detail/${item.type}/${item.id}`);
 }
 
+// 滚动监听
+function handleScroll() {
+  if (loading.value || noMore.value) return;
+  
+  const scrollTop = window.scrollY || document.documentElement.scrollTop;
+  const scrollHeight = document.documentElement.scrollHeight;
+  const clientHeight = window.innerHeight;
+  
+  // 距离底部 200px 时触发加载
+  if (scrollTop + clientHeight >= scrollHeight - 200) {
+    loadMore();
+  }
+}
+
 // 监听路由变化切换类型
 watch(() => route.path, (newPath) => {
   mediaType.value = newPath.includes('/tv') ? 'tv' : 'movie';
-  load(1);
+  resetAndLoad();
 });
 
-onMounted(() => load(1));
+onMounted(() => {
+  loadMore();
+  window.addEventListener('scroll', handleScroll);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll);
+});
 </script>
 
 <style scoped>
 .rank {
   padding: 0 20px;
+  min-height: 100vh;
 }
 
 .rank-header {
@@ -131,7 +174,6 @@ onMounted(() => load(1));
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 16px;
-  min-height: 200px;
   margin-bottom: 20px;
 }
 
@@ -252,9 +294,31 @@ onMounted(() => load(1));
   color: #8b93a1;
 }
 
-.pager {
+/* 加载状态 */
+.loading-more {
   display: flex;
+  align-items: center;
   justify-content: center;
-  margin: 28px 0;
+  gap: 8px;
+  padding: 20px;
+  color: #8b93a1;
+  font-size: 14px;
+}
+
+.loading-more .is-loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 加载完毕 */
+.no-more {
+  text-align: center;
+  padding: 20px;
+  color: #6b7280;
+  font-size: 13px;
 }
 </style>
