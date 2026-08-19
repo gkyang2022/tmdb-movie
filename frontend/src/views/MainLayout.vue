@@ -12,9 +12,6 @@
         <el-menu-item index="/search">
           <el-icon><Search /></el-icon><span>搜索</span>
         </el-menu-item>
-        <el-menu-item index="/transfer">
-          <el-icon><Download /></el-icon><span>网盘转存</span>
-        </el-menu-item>
         <el-menu-item index="/tracker">
           <el-icon><Bell /></el-icon><span>追剧提醒</span>
         </el-menu-item>
@@ -35,7 +32,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { HomeFilled, Trophy, Search, Setting, Download, Bell } from '@element-plus/icons-vue';
+import { HomeFilled, Trophy, Search, Setting, Bell } from '@element-plus/icons-vue';
 import { useUserStore } from '@/stores/user';
 
 const store = useUserStore();

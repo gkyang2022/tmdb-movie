@@ -55,6 +55,10 @@ export const trackerApi = {
 export const authApi = {
   login: (username: string, password: string) =>
     request.post<{ token: string; username: string }>('/auth/login', { username, password }).then((r) => r.data),
+  changePassword: (oldPassword: string, newPassword: string) =>
+    request
+      .post<{ ok: boolean; message: string }>('/auth/change-password', { oldPassword, newPassword })
+      .then((r) => r.data),
 };
 
 export const pansouApi = {

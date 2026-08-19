@@ -154,6 +154,62 @@
     </el-card>
 
     <el-card class="card" shadow="never">
+      <template #header><span>🛠 工具</span></template>
+      <div class="tools-row">
+        <div class="tool-item">
+          <div class="tool-info">
+            <div class="tool-title">☁️ 手动转存</div>
+            <div class="tool-desc">拿到一个网盘分享链接（不是从详情页搜出来的）时，粘贴到这里直接转存</div>
+          </div>
+          <el-button type="primary" plain @click="goTransfer">打开转存页</el-button>
+        </div>
+      </div>
+    </el-card>
+
+    <el-card class="card" shadow="never">
+      <template #header><span>🔑 修改登录密码</span></template>
+      <el-form label-width="120px" class="form">
+        <el-form-item label="旧密码">
+          <el-input
+            v-model="pwdForm.oldPassword"
+            type="password"
+            show-password
+            placeholder="当前登录密码"
+            class="key-input"
+            @keyup.enter="changePassword"
+          />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input
+            v-model="pwdForm.newPassword"
+            type="password"
+            show-password
+            placeholder="至少 6 位"
+            class="key-input"
+            @keyup.enter="changePassword"
+          />
+        </el-form-item>
+        <el-form-item label="确认新密码">
+          <el-input
+            v-model="pwdForm.confirmPassword"
+            type="password"
+            show-password
+            placeholder="再输一次新密码"
+            class="key-input"
+            @keyup.enter="changePassword"
+          />
+        </el-form-item>
+        <el-form-item label=" ">
+          <el-button type="primary" :loading="changingPwd" @click="changePassword">修改密码</el-button>
+        </el-form-item>
+        <p class="pwd-hint">
+          💡 密码以加密形式保存在服务端，修改后需用新密码重新登录。
+          如果忘记旧密码，可重新部署并用 <code>ADMIN_PASSWORD</code> 环境变量重置。
+        </p>
+      </el-form>
+    </el-card>
+
+    <el-card class="card" shadow="never">
       <template #header><span>ℹ️ 当前环境信息</span></template>
       <el-descriptions :column="1" size="small" border>
         <el-descriptions-item label="Key 来源">
@@ -170,8 +226,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { ElMessage } from 'element-plus';
-import { settingsApi } from '@/api/tmdb';
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { authApi, settingsApi } from '@/api/tmdb';
+import { useUserStore } from '@/stores/user';
 import type { SettingsInfo } from '@/types';
 
 const apiKey = ref('');
@@ -192,6 +250,12 @@ const discordWebhooks = ref('');
 const notifyTargets = ref<string[]>(['telegram_chat', 'discord_channel']);
 // 盘搜
 const pansouUrl = ref('');
+
+// 修改密码
+const pwdForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' });
+const changingPwd = ref(false);
+const router = useRouter();
+const userStore = useUserStore();
 
 const hasKey = computed(() => !!info.value?.tmdb_api_key_masked || info.value?.source === 'env');
 const sourceLabel = computed(() => {
@@ -297,6 +361,53 @@ async function clearKey() {
   }
 }
 
+function goTransfer() {
+  router.push('/transfer');
+}
+
+async function changePassword() {
+  const { oldPassword, newPassword, confirmPassword } = pwdForm.value;
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    ElMessage.warning('请填写完整');
+    return;
+  }
+  if (newPassword.length < 6) {
+    ElMessage.warning('新密码至少 6 位');
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    ElMessage.warning('两次新密码不一致');
+    return;
+  }
+  if (newPassword === oldPassword) {
+    ElMessage.warning('新密码不能与旧密码相同');
+    return;
+  }
+  changingPwd.value = true;
+  try {
+    await ElMessageBox.confirm(
+      '修改密码后需要重新登录，是否继续？',
+      '确认修改密码',
+      { confirmButtonText: '继续修改', cancelButtonText: '取消', type: 'warning' },
+    );
+  } catch {
+    changingPwd.value = false;
+    return;
+  }
+  try {
+    const res = await authApi.changePassword(oldPassword, newPassword);
+    ElMessage.success(res.message || '密码已更新，请重新登录');
+    pwdForm.value = { oldPassword: '', newPassword: '', confirmPassword: '' };
+    userStore.logout();
+    router.push('/login');
+  } catch (e: any) {
+    const msg = e?.response?.data?.error || e?.message || '修改失败';
+    ElMessage.error(msg);
+  } finally {
+    changingPwd.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -365,5 +476,36 @@ onMounted(load);
 }
 .pansou-tip {
   margin-top: 6px;
+}
+.tools-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tool-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+.tool-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.tool-desc {
+  font-size: 12px;
+  color: #8b93a1;
+}
+.pwd-hint {
+  color: #8b93a1;
+  font-size: 12px;
+  line-height: 1.8;
+  margin: 0;
+}
+.pwd-hint code {
+  background: #232936;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #f0b429;
 }
 </style>
