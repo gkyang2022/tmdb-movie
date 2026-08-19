@@ -6,8 +6,11 @@
         <el-menu-item index="/home">
           <el-icon><HomeFilled /></el-icon><span>首页</span>
         </el-menu-item>
-        <el-menu-item index="/rank">
-          <el-icon><Trophy /></el-icon><span>排行榜</span>
+        <el-menu-item index="/rank?type=movie">
+          <el-icon><Film /></el-icon><span>电影</span>
+        </el-menu-item>
+        <el-menu-item index="/rank?type=tv">
+          <el-icon><Monitor /></el-icon><span>剧集</span>
         </el-menu-item>
         <el-menu-item index="/search">
           <el-icon><Search /></el-icon><span>搜索</span>
@@ -32,7 +35,7 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import { HomeFilled, Trophy, Search, Setting, Bell } from '@element-plus/icons-vue';
+import { HomeFilled, Film, Monitor, Search, Setting, Bell } from '@element-plus/icons-vue';
 import { useUserStore } from '@/stores/user';
 
 const store = useUserStore();
