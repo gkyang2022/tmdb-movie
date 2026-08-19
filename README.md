@@ -1,10 +1,10 @@
 # QuarkCine
 
-> 影视发现 · 一键转存夸克/115网盘 · SmartStrm STRM 生成
+> 影视发现 · 一键转存夸克/115网盘 · 自动生成 STRM 接入媒体库
 
 基于 **TMDB 官方 API** 的影视探索工具，前后端分离：后端 Express + TypeScript，前端 Vue 3 + Vite + Element Plus。
 
-数据源稳定（TMDB 官方直链），无需 Cookie / 反爬hack；转存链路打通夸克 + 115；配合 SmartStrm 可自动生成 STRM 文件，接入 Jellyfin / 飞牛影视等媒体库播放。
+数据源稳定（TMDB 官方直链），转存链路打通夸克 + 115；配合 SmartStrm 可自动生成 STRM 文件，接入 Jellyfin / 飞牛影视等媒体库播放。
 
 ![QuarkCine](https://raw.githubusercontent.com/gkyang2022/quarkcine/main/screenshot.png)
 
@@ -21,40 +21,58 @@
 | **STRM** | 转存成功后自动通知 SmartStrm 生成 STRM，接入媒体库播放 |
 | **设置** | 部署者自填 API Key，加密存储，支持测试连接，保存即生效 |
 
-## 🚀 快速部署（Docker）
+## 🚀 5分钟部署（Docker）
 
-### 1. 准备三个密钥
+### 第一步：下载项目
+
+在服务器上运行：
 
 ```bash
-openssl rand -hex 32   # → AUTH_SECRET
-openssl rand -hex 32   # → ENCRYPTION_KEY
-# 设置一个强密码 → ADMIN_PASSWORD
+git clone https://github.com/gkyang2022/quarkcine.git
+cd quarkcine
 ```
 
-### 2. 修改 docker-compose.yml
+### 第二步：设置管理员密码
+
+编辑 `docker-compose.yml`，找到 `ADMIN_PASSWORD=` 这一行，填一个你自己的密码：
 
 ```yaml
 environment:
-  - ADMIN_PASSWORD=你的强密码          # 必填
-  - AUTH_SECRET=上面生成的第一个hex值    # 必填
-  - ENCRYPTION_KEY=上面生成的第二个hex值 # 必填
-  - TMDB_API_KEY=                      # 可选，也可在网页设置页填写
+  - ADMIN_PASSWORD=改成你的密码
 ```
 
-### 3. 启动
+> 💡 密码建议 6 位以上，不要留空。也可以在首次启动后登录网页界面再改。
+
+### 第三步：启动
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-访问 `http://<服务器IP>:8081`，用 `admin` + 你的密码登录，
-在 **「设置 → 数据源」** 粘贴 TMDB API Key → 测试连接 → 保存。
+### 第四步：访问
 
-> 💡 TMDB API Key 免费：<https://www.themoviedb.org/signup> → Settings → API → Create
+打开浏览器访问 `http://<服务器IP>:8081`
 
-### 4. 接入网盘（可选）
+用账号 `admin` 和你设置的密码登录。
 
-在 **「设置 → 网盘」** 填入夸克 Cookie，即可开启转存和追剧功能。
+### 第五步：配置 TMDB（免费）
+
+> 如果只是用转存/追剧功能，不需要这一步。
+
+1. 免费注册 TMDB：<https://www.themoviedb.org/signup>
+2. 进入 **Settings → API → Create API key**
+3. 复制 API Key，粘贴到 QuarkCine **「设置 → 数据源」** 页面 → 测试连接 → 保存
+
+---
+
+## 📁 接入网盘（可选）
+
+在 **「设置 → 网盘」** 填入夸克 Cookie，即可开启：
+- 一键转存
+- 追剧提醒
+- 自动生成 STRM
+
+详细教程：[Wiki：网盘接入](https://github.com/gkyang2022/quarkcine/wiki)
 
 ## 🛠 本地开发
 
@@ -73,18 +91,15 @@ npm run dev
 
 | 变量 | 必填 | 说明 |
 |:---|:---|:---|
-| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | ✅ 必改 | 管理员登录凭证 |
-| `AUTH_SECRET` | ✅ 必填 | JWT 签名密钥（`openssl rand -hex 32`） |
-| `ENCRYPTION_KEY` | ✅ 必填 | AES-256-GCM 加密密钥（`openssl rand -hex 32`） |
+| `ADMIN_PASSWORD` | ✅ | 管理员密码，建议 6 位以上 |
 | `TMDB_API_KEY` | — | 环境变量方式配置 TMDB Key（也可网页设置页填） |
 | `TMDB_LANGUAGE` | — | 默认 `zh-CN` |
-| `CACHE_TTL` | — | 缓存秒数，默认 3600（TMDB 免费层有限速） |
 
 ## 🔒 安全说明
 
-- TMDB API Key、Cookie 等敏感配置 **AES-256-GCM 加密存储**于 `backend/data/settings.json`
-- 所有接口需登录认证（JWT），避免 API 配额被陌生人白嫖
-- v3 Key（纯字母数字）自动走 `api_key` 参数；v4 Token（`eyJ` 开头）自动走 Bearer 头
+- TMDB API Key、Cookie 等敏感配置 **AES-256-GCM 加密存储**
+- 所有接口需登录认证（JWT）
+- v3 Key 自动走 `api_key` 参数；v4 Token（`eyJ` 开头）自动走 Bearer 头
 
 ## 📄 License
 
