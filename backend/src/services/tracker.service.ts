@@ -210,12 +210,12 @@ export class TrackerService {
     const updatedIds = [...new Set([...lastFileIds, ...currentFiles.map((f) => f.id)])];
     updateTask(task.id, { lastFileIds: JSON.stringify(updatedIds) });
 
-    // 通知
+    // 通知（通知失败不影响转存成功的判定）
     const fileNames = transferRes.names || [];
     const filesText = fileNames.length > 0 ? `（${fileNames.join(' | ')}）` : '';
-    await notify(
+    void notify(
       `🎬 追剧成功：${task.name} 发现 ${newFiles.length} 个新内容${filesText}\n已自动转存到夸克网盘`,
-    );
+    ).catch((e: any) => logger.warn('[TrackerService] 通知发送失败，不影响任务状态', { e }));
 
     const successMessage = transferRes.message
       ? `${transferRes.message}，共${topLevelNewFiles.length}项`

@@ -15,6 +15,13 @@
     <el-card class="card" shadow="never">
       <template #header><span>夸克网盘转存</span></template>
       <el-form label-width="100px" class="form" @submit.prevent>
+        <el-form-item label="内容类型">
+          <el-radio-group v-model="contentTypeQuark" size="small">
+            <el-radio-button value="movie">电影</el-radio-button>
+            <el-radio-button value="tv">剧集</el-radio-button>
+            <el-radio-button value="default">默认</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="分享链接">
           <el-input
             v-model="quarkUrl"
@@ -28,17 +35,23 @@
           <el-button type="primary" :loading="transferring" :disabled="!quarkConfigured" @click="doTransfer('quark')">
             转存到夸克
           </el-button>
-          <span v-if="!quarkConfigured" class="hint">未配置夸克 Cookie</span>
+          <span v-if="quarkConfigured && quarkFolderId" class="hint">
+            目标：{{ quarkFolderLabel }}（{{ quarkFolderId === '0' ? '根目录' : quarkFolderId }}）
+          </span>
         </el-form-item>
       </el-form>
-      <div v-if="quarkFolderId" class="folder-hint">
-        目标目录：{{ quarkFolderId === '0' ? '网盘根目录' : quarkFolderId }}
-      </div>
     </el-card>
 
     <el-card class="card" shadow="never">
       <template #header><span>115 网盘转存</span></template>
       <el-form label-width="100px" class="form" @submit.prevent>
+        <el-form-item label="内容类型">
+          <el-radio-group v-model="contentType115" size="small">
+            <el-radio-button value="movie">电影</el-radio-button>
+            <el-radio-button value="tv">剧集</el-radio-button>
+            <el-radio-button value="default">默认</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="分享链接">
           <el-input
             v-model="url115"
@@ -52,12 +65,11 @@
           <el-button type="primary" :loading="transferring115" :disabled="!configured115" @click="doTransfer('115')">
             转存到 115
           </el-button>
-          <span v-if="!configured115" class="hint">未配置 115 Cookie</span>
+          <span v-if="configured115 && folderId115" class="hint">
+            目标：{{ folderId115 === '0' ? '根目录' : folderId115 }}
+          </span>
         </el-form-item>
       </el-form>
-      <div v-if="folderId115" class="folder-hint">
-        目标目录：{{ folderId115 === '0' ? '网盘根目录' : folderId115 }}
-      </div>
     </el-card>
 
     <el-card v-if="lastResult" class="card result-card" shadow="never">
@@ -80,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, computed } from 'vue';
 import { ElMessage } from 'element-plus';
 import { transferApi } from '@/api/tmdb';
 import type { TransferResult } from '@/types';
@@ -94,6 +106,16 @@ const folderId115 = ref('0');
 const transferring = ref(false);
 const transferring115 = ref(false);
 const lastResult = ref<TransferResult | null>(null);
+
+// 内容类型：用于路由到分类子目录
+const contentTypeQuark = ref<'movie' | 'tv' | 'default'>('default');
+const contentType115 = ref<'movie' | 'tv' | 'default'>('default');
+
+const quarkFolderLabel = computed(() => {
+  if (contentTypeQuark.value === 'movie') return '电影目录';
+  if (contentTypeQuark.value === 'tv') return '剧集目录';
+  return '默认目录';
+});
 
 async function loadConfig() {
   try {
@@ -113,10 +135,14 @@ async function doTransfer(type: 'quark' | '115') {
     ElMessage.warning('请先填写分享链接');
     return;
   }
+  const ct = (() => {
+    const raw = type === 'quark' ? contentTypeQuark.value : contentType115.value;
+    return raw === 'default' ? undefined : raw;
+  })();
   const loading = type === 'quark' ? transferring : transferring115;
   loading.value = true;
   try {
-    const res = await transferApi.save(url, type);
+    const res = await transferApi.save(url, type, ct);
     lastResult.value = res;
     if (res.ok) {
       ElMessage.success(res.message);
@@ -124,7 +150,7 @@ async function doTransfer(type: 'quark' | '115') {
       ElMessage.error(res.error || res.message);
     }
   } catch (e: any) {
-    const msg = e?.response?.data?.error || '转存请求失败';
+    const msg = e?.response?.data?.error || e?.message || '转存请求失败';
     lastResult.value = { ok: false, message: msg };
     ElMessage.error(msg);
   } finally {
@@ -159,15 +185,8 @@ onMounted(loadConfig);
 }
 .hint {
   margin-left: 10px;
-  color: #6b7280;
-  font-size: 12px;
-}
-.folder-hint {
-  margin-left: 100px;
   color: #8b93a1;
   font-size: 12px;
-  margin-top: -10px;
-  margin-bottom: 10px;
 }
 .result-card {
   max-width: 760px;

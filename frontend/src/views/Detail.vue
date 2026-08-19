@@ -51,10 +51,10 @@
       </div>
 
       <!-- 预告片 -->
-      <div v-if="detail.videos.length" class="section">
+      <div v-if="detail.videos?.length" class="section">
         <h2>🎬 预告片</h2>
         <div class="video-grid">
-          <div v-for="v in detail.videos" :key="v.key" class="video-card">
+          <div v-for="v in detail.videos!" :key="v.key" class="video-card">
             <iframe
               :src="`https://www.youtube.com/embed/${v.key}`"
               frameborder="0"
