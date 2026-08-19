@@ -25,11 +25,10 @@
 
 ### 第一步：下载项目
 
-在服务器上运行：
+在服务器上运行一行命令：
 
 ```bash
-git clone https://github.com/gkyang2022/quarkcine.git
-cd quarkcine
+git clone https://github.com/gkyang2022/quarkcine.git && cd quarkcine
 ```
 
 ### 第二步：设置管理员密码
