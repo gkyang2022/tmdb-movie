@@ -1,352 +1,376 @@
 <template>
   <div class="settings">
-    <h1 class="page-title">⚙️ 设置</h1>
+    <!-- 顶部标题栏 -->
+    <div class="settings-header">
+      <div class="header-left">
+        <h1 class="page-title">⚙️ 设置</h1>
+        <span class="page-subtitle">QuarkCine 配置中心</span>
+      </div>
+      <div class="status-badge" :class="hasKey ? 'ok' : 'warn'">
+        <span class="status-dot" />
+        {{ hasKey ? '数据源已配置' : '数据源未配置' }}
+      </div>
+    </div>
 
+    <!-- 警告提示 -->
     <el-alert
       v-if="!hasKey"
       type="warning"
       show-icon
       :closable="false"
-      title="尚未配置 TMDB API Key，数据接口暂不可用"
-      description="请在下方向 TMDB 免费申请一个 API Key 并填写保存，立即生效无需重启。"
-      class="alert"
+      title="尚未配置 TMDB API Key，影片数据暂不可用"
+      class="top-alert"
     />
 
-    <el-card class="card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span>🎬 TMDB 数据源</span>
-          <el-tag v-if="info" size="small" :type="info.source === 'none' ? 'info' : 'success'">
-            {{ sourceLabel }}
-          </el-tag>
+    <!-- 主 Tab 区 -->
+    <el-tabs v-model="activeTab" class="settings-tabs" tab-position="left">
+
+      <!-- ========== Tab 1: 数据源 ========== -->
+      <el-tab-pane name="source">
+        <template #label>
+          <span class="tab-label"><span class="tab-icon">🎬</span> 数据源</span>
+        </template>
+
+        <div class="tab-content">
+          <div class="section-card">
+            <div class="section-title">TMDB API Key</div>
+            <p class="section-desc">用于获取电影 / 剧集的封面、评分、简介等信息。免费申请，约 2 分钟。</p>
+
+            <el-form label-width="110px" class="form">
+              <el-form-item label="API Key">
+                <el-input
+                  v-model="apiKey"
+                  type="password"
+                  show-password
+                  placeholder="粘贴 TMDB API Key（v3 Key 或 v4 Token 均可）"
+                  class="full-input"
+                />
+                <span v-if="info?.tmdb_api_key_masked" class="field-hint">
+                  当前已配置：{{ info.tmdb_api_key_masked }}
+                </span>
+              </el-form-item>
+              <el-form-item label="API 语言">
+                <el-select v-model="tmdbLanguage" placeholder="默认 zh-CN" style="width: 200px">
+                  <el-option label="中文 (zh-CN)" value="zh-CN" />
+                  <el-option label="英文 (en-US)" value="en-US" />
+                  <el-option label="日语 (ja-JP)" value="ja-JP" />
+                  <el-option label="韩语 (ko-KR)" value="ko-KR" />
+                </el-select>
+              </el-form-item>
+              <el-form-item label=" ">
+                <el-button type="primary" :loading="saving" @click="saveKey">保存</el-button>
+                <el-button :loading="testing" @click="testKey">测试连接</el-button>
+                <el-button v-if="hasKey" type="danger" plain :loading="saving" @click="clearKey">清除</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <div class="section-card howto">
+            <div class="section-title">📖 如何获取 TMDB API Key</div>
+            <ol class="howto-list">
+              <li>打开 <el-link type="primary" href="https://www.themoviedb.org/signup" target="_blank">themoviedb.org</el-link> 注册账号（邮箱即可）</li>
+              <li>登录后进入 <el-link type="primary" href="https://www.themoviedb.org/settings/api" target="_blank">Settings → API</el-link></li>
+              <li>点击「Create」→ 类型选「Developer」</li>
+              <li>复制 <b>API Key (v3)</b> 或 <b>API Read Access Token (v4)</b> 粘贴上方</li>
+            </ol>
+            <p class="howto-note">
+              💡 v3 Key（纯字母数字）自动走 <code>api_key</code> 参数；v4 Token（<code>eyJ</code> 开头）自动走 <code>Authorization: Bearer</code> 头。
+            </p>
+          </div>
+
+          <el-descriptions :column="2" size="small" border class="info-table">
+            <el-descriptions-item label="Key 来源">{{ sourceLabel }}</el-descriptions-item>
+            <el-descriptions-item label="图片 CDN">
+              {{ info?.image_proxy_base || 'TMDB 官方直链' }}
+            </el-descriptions-item>
+          </el-descriptions>
         </div>
-      </template>
+      </el-tab-pane>
 
-      <el-form label-width="120px" class="form">
-        <el-form-item label="API Key">
-          <el-input
-            v-model="apiKey"
-            type="password"
-            show-password
-            placeholder="粘贴你的 TMDB API Key（v3 Key 或 v4 Access Token 均可）"
-            class="key-input"
-          />
-        </el-form-item>
+      <!-- ========== Tab 2: 网盘 ========== -->
+      <el-tab-pane name="storage">
+        <template #label>
+          <span class="tab-label"><span class="tab-icon">☁️</span> 网盘</span>
+        </template>
 
-        <el-form-item v-if="info?.tmdb_api_key_masked" label="当前已配置">
-          <span class="masked">{{ info.tmdb_api_key_masked }}</span>
-          <span class="masked-hint">（保存新值会覆盖旧值）</span>
-        </el-form-item>
+        <div class="tab-content">
+          <!-- 夸克网盘 -->
+          <div class="section-card">
+            <div class="section-title">夸克网盘</div>
+            <p class="section-desc">配置 Cookie 后可从详情页一键转存影片到夸克网盘。</p>
+            <el-form label-width="110px" class="form">
+              <el-form-item label="夸克 Cookie">
+                <el-input
+                  v-model="cookieQuark"
+                  type="password"
+                  show-password
+                  placeholder="登录 pan.quark.cn → F12 → 复制请求头 Cookie"
+                  class="full-input"
+                />
+                <span v-if="info?.cookie_quark_masked" class="field-hint ok">
+                  ✓ 已配置：{{ info.cookie_quark_masked }}
+                </span>
+              </el-form-item>
+              <el-form-item label="默认目录 ID">
+                <el-input v-model="folderIdQuark" placeholder="留空为根目录（0）" class="full-input" />
+              </el-form-item>
+              <el-form-item label="分类目录">
+                <div class="folder-chips">
+                  <div class="chip-row">
+                    <span class="chip-label">电影</span>
+                    <el-input v-model="quarkFolders.movie" placeholder="目录 ID" size="small" style="width:200px" />
+                    <el-button size="small" @click="openFolderPicker('quark', 'movie')">浏览</el-button>
+                  </div>
+                  <div class="chip-row">
+                    <span class="chip-label">剧集</span>
+                    <el-input v-model="quarkFolders.tv" placeholder="目录 ID" size="small" style="width:200px" />
+                    <el-button size="small" @click="openFolderPicker('quark', 'tv')">浏览</el-button>
+                  </div>
+                  <div class="chip-row">
+                    <span class="chip-label">默认</span>
+                    <el-input v-model="quarkFolders.default" placeholder="未匹配时使用" size="small" style="width:200px" />
+                    <el-button size="small" @click="openFolderPicker('quark', 'default')">浏览</el-button>
+                  </div>
+                </div>
+              </el-form-item>
+            </el-form>
+          </div>
 
-        <el-form-item label=" ">
-          <el-button type="primary" :loading="saving" @click="saveKey">保存</el-button>
-          <el-button :loading="testing" @click="testKey">测试连接</el-button>
-          <el-button v-if="hasKey" type="danger" plain :loading="saving" @click="clearKey">清除 Key</el-button>
-        </el-form-item>
-      </el-form>
+          <!-- 115网盘 -->
+          <div class="section-card">
+            <div class="section-title">115 网盘</div>
+            <p class="section-desc">可选。配置后转存时可在电影和剧集间切换目标网盘。</p>
+            <el-form label-width="110px" class="form">
+              <el-form-item label="115 Cookie">
+                <el-input
+                  v-model="cookie115"
+                  type="password"
+                  show-password
+                  placeholder="登录 115.com → F12 → 复制请求头 Cookie"
+                  class="full-input"
+                />
+                <span v-if="info?.cookie_115_masked" class="field-hint ok">
+                  ✓ 已配置：{{ info.cookie_115_masked }}
+                </span>
+              </el-form-item>
+              <el-form-item label="默认目录 ID">
+                <el-input v-model="folderId115" placeholder="留空为根目录（0）" class="full-input" />
+              </el-form-item>
+              <el-form-item label="分类目录">
+                <div class="folder-chips">
+                  <div class="chip-row">
+                    <span class="chip-label">电影</span>
+                    <el-input v-model="folders115.movie" placeholder="目录 ID" size="small" style="width:200px" />
+                    <el-button size="small" @click="openFolderPicker('115', 'movie')">浏览</el-button>
+                  </div>
+                  <div class="chip-row">
+                    <span class="chip-label">剧集</span>
+                    <el-input v-model="folders115.tv" placeholder="目录 ID" size="small" style="width:200px" />
+                    <el-button size="small" @click="openFolderPicker('115', 'tv')">浏览</el-button>
+                  </div>
+                </div>
+              </el-form-item>
+            </el-form>
+          </div>
 
-      <el-divider />
-
-      <h3 class="howto-title">📖 如何获取 TMDB API Key（约 2 分钟，免费）</h3>
-      <ol class="howto">
-        <li>打开 <el-link type="primary" href="https://www.themoviedb.org/signup" target="_blank">themoviedb.org</el-link> 注册账号（邮箱即可）</li>
-        <li>登录后进入 <el-link type="primary" href="https://www.themoviedb.org/settings/api" target="_blank">Settings → API</el-link></li>
-        <li>点击「Create」创建 API Key，类型选 Developer</li>
-        <li>把生成的 <b>API Key (v3)</b> 或 <b>API Read Access Token (v4)</b> 粘贴到上方输入框</li>
-        <li>点击「测试连接」验证，通过后点「保存」即可开始使用</li>
-      </ol>
-      <p class="howto-note">
-        💡 两种格式都支持：v3 Key（一串字母数字）自动走 api_key 参数；v4 Token（eyJ 开头）自动走 Bearer 头。
-        也可用环境变量 <code>TMDB_API_KEY</code> 配置，二选一即可。
-      </p>
-    </el-card>
-
-    <el-card class="card" shadow="never">
-      <template #header><span>☁️ 网盘转存（夸克 / 115）</span></template>
-      <el-form label-width="120px" class="form">
-        <el-form-item label="夸克 Cookie">
-          <el-input
-            v-model="cookieQuark"
-            type="password"
-            show-password
-            placeholder="登录 pan.quark.cn 后从浏览器复制 Cookie（含 _upass2 等字段）"
-            class="key-input"
-          />
-          <span v-if="info?.cookie_quark_masked" class="masked-inline">当前：{{ info.cookie_quark_masked }}</span>
-        </el-form-item>
-        <el-form-item label="夸克目录 ID">
-          <el-input v-model="folderIdQuark" placeholder="留空为根目录（0）；可从分享链接 #/ 后或网盘 API 获取" class="key-input" />
-        </el-form-item>
-        <el-form-item label="115 Cookie">
-          <el-input
-            v-model="cookie115"
-            type="password"
-            show-password
-            placeholder="登录 115.com 后从浏览器复制 Cookie（含 UID、CID、SEID 等字段）"
-            class="key-input"
-          />
-          <span v-if="info?.cookie_115_masked" class="masked-inline">当前：{{ info.cookie_115_masked }}</span>
-        </el-form-item>
-        <el-form-item label="115 目录 ID">
-          <el-input v-model="folderId115" placeholder="留空为根目录（0）" class="key-input" />
-        </el-form-item>
-        <el-form-item label=" ">
           <el-button type="primary" :loading="saving" @click="saveAll">保存网盘配置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+        </div>
+      </el-tab-pane>
 
-    <!-- 分类目录配置 -->
-    <el-card class="card" shadow="never">
-      <template #header><span>📁 分类目录配置（可选）</span></template>
-      <el-alert type="info" :closable="false" class="alert-sm">
-        配置后，转存电影/剧集时会自动路由到对应目录。不配置则使用上方的基础目录 ID。
-      </el-alert>
-      
-      <el-tabs v-model="folderTab" class="folder-tabs">
-        <el-tab-pane label="夸克网盘" name="quark">
-          <el-form label-width="100px" class="form">
-            <el-form-item label="电影目录">
-              <el-input v-model="quarkFolders.movie" placeholder="目录 ID 或点击浏览">
-                <template #append>
-                  <el-button @click="openFolderPicker('quark', 'movie')">浏览</el-button>
-                </template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="剧集目录">
-              <el-input v-model="quarkFolders.tv" placeholder="目录 ID 或点击浏览">
-                <template #append>
-                  <el-button @click="openFolderPicker('quark', 'tv')">浏览</el-button>
-                </template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="默认目录">
-              <el-input v-model="quarkFolders.default" placeholder="未匹配类型时使用" />
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-        
-        <el-tab-pane label="115网盘" name="115">
-          <el-form label-width="100px" class="form">
-            <el-form-item label="电影目录">
-              <el-input v-model="folders115.movie" placeholder="目录 ID 或点击浏览">
-                <template #append>
-                  <el-button @click="openFolderPicker('115', 'movie')">浏览</el-button>
-                </template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="剧集目录">
-              <el-input v-model="folders115.tv" placeholder="目录 ID 或点击浏览">
-                <template #append>
-                  <el-button @click="openFolderPicker('115', 'tv')">浏览</el-button>
-                </template>
-              </el-input>
-            </el-form-item>
-            <el-form-item label="默认目录">
-              <el-input v-model="folders115.default" placeholder="未匹配类型时使用" />
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-      </el-tabs>
-      
-      <el-button type="primary" :loading="saving" @click="saveFolderConfig">保存目录配置</el-button>
-    </el-card>
+      <!-- ========== Tab 3: 通知 ========== -->
+      <el-tab-pane name="notify">
+        <template #label>
+          <span class="tab-label"><span class="tab-icon">🔔</span> 通知</span>
+        </template>
 
-    <el-card class="card" shadow="never">
-      <template #header><span>🔔 通知（追剧提醒 / 转存结果）</span></template>
-      <el-form label-width="120px" class="form">
-        <el-form-item label="Telegram Bot Token">
-          <el-input
-            v-model="telegramToken"
-            type="password"
-            show-password
-            placeholder="从 @BotFather 获取（可选）"
-            class="key-input"
-          />
-          <span v-if="info?.telegram_bot_token_masked" class="masked-inline">当前：{{ info.telegram_bot_token_masked }}</span>
-        </el-form-item>
-        <el-form-item label="接收 Chat ID">
-          <el-input v-model="telegramChatIds" placeholder="多个用逗号/空格分隔；向 @userinfobot 发送任意消息可查自己的 ID" class="key-input" />
-        </el-form-item>
-        <el-form-item label="Discord Webhook">
-          <el-input v-model="discordWebhooks" placeholder="https://discord.com/api/webhooks/...（可选，多个换行/逗号分隔）" class="key-input" />
-        </el-form-item>
-        <el-form-item label="通知渠道">
-          <el-checkbox-group v-model="notifyTargets">
-            <el-checkbox value="telegram_chat">Telegram</el-checkbox>
-            <el-checkbox value="discord_channel">Discord</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
-        <el-form-item label=" ">
+        <div class="tab-content">
+          <!-- Telegram -->
+          <div class="section-card">
+            <div class="section-title">Telegram 通知</div>
+            <el-form label-width="130px" class="form">
+              <el-form-item label="Bot Token">
+                <el-input
+                  v-model="telegramToken"
+                  type="password"
+                  show-password
+                  placeholder="从 @BotFather 获取"
+                  class="full-input"
+                />
+                <span v-if="info?.telegram_bot_token_masked" class="field-hint ok">
+                  ✓ {{ info.telegram_bot_token_masked }}
+                </span>
+              </el-form-item>
+              <el-form-item label="接收人 Chat ID">
+                <el-input
+                  v-model="telegramChatIds"
+                  placeholder="向 @userinfobot 发消息可查，多个逗号分隔"
+                  class="full-input"
+                />
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- Discord -->
+          <div class="section-card">
+            <div class="section-title">Discord Webhook</div>
+            <el-form label-width="130px" class="form">
+              <el-form-item label="Webhook URL">
+                <el-input
+                  v-model="discordWebhooks"
+                  placeholder="频道设置 → 集成 → Webhook → 复制 URL"
+                  class="full-input"
+                />
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- SmartStrm -->
+          <div class="section-card">
+            <div class="section-title">🤖 SmartStrm STRM 生成</div>
+            <p class="section-desc">
+              转存成功后自动通知 SmartStrm 刷新指定任务，自动生成 STRM 文件供飞牛影视播放。
+            </p>
+            <el-form label-width="130px" class="form">
+              <el-form-item label="Webhook 地址">
+                <el-input
+                  v-model="smartstrmWebhookUrl"
+                  placeholder="http://10.0.0.191:8024/webhook/xxxxx"
+                  class="full-input"
+                />
+              </el-form-item>
+              <el-form-item label="存储映射">
+                <el-input
+                  v-model="smartstrmMapping"
+                  type="textarea"
+                  :rows="2"
+                  placeholder='留空自动匹配，或填写 {"movie":"my_quark","tv":"my_quark"}'
+                  class="full-input"
+                />
+                <span class="field-hint">
+                  留空时按任务名（movie / tv / anime）自动匹配；仅在存储名不一致时填写
+                </span>
+              </el-form-item>
+              <el-form-item label=" ">
+                <el-button :loading="testingSmartstrm" @click="testSmartstrm">测试触发</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- 盘搜 -->
+          <div class="section-card">
+            <div class="section-title">🔍 盘搜（Pansou）</div>
+            <p class="section-desc">
+              详情页「搜盘」按钮依赖此服务。需自部署
+              <el-link type="primary" href="https://github.com/fish2018/pansou" target="_blank" :underline="false">fish2018/pansou</el-link>
+              并填写实例地址。
+            </p>
+            <el-form label-width="130px" class="form">
+              <el-form-item label="Pansou 地址">
+                <el-input
+                  v-model="pansouUrl"
+                  placeholder="http://你的-pansou地址:port"
+                  class="full-input"
+                />
+                <span v-if="info?.pansou_url" class="field-hint">
+                  当前：{{ info.pansou_url }}
+                </span>
+              </el-form-item>
+            </el-form>
+          </div>
+
           <el-button type="primary" :loading="saving" @click="saveAll">保存通知配置</el-button>
           <el-button :loading="testingNotify" @click="testNotify">发送测试消息</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card class="card" shadow="never">
-      <template #header><span>🤖 SmartStrm STRM 生成</span></template>
-      <el-form label-width="140px" class="form">
-        <el-form-item label="Webhook 地址">
-          <el-input
-            v-model="smartstrmWebhookUrl"
-            placeholder="http://10.0.0.191:8024/webhook/xxxxx"
-            class="key-input"
-          />
-          <span class="masked-inline">在 SmartStrm「系统设置 → Webhook」中复制完整 URL</span>
-        </el-form-item>
-        <el-form-item label="存储映射（可选）">
-          <el-input
-            v-model="smartstrmMapping"
-            placeholder='{"movie": "quark", "tv": "quark"}'
-            type="textarea"
-            :rows="2"
-            class="key-input"
-          />
-          <span class="masked-inline">JSON，键为 movie/tv/anime，值为 SmartStrm 中存储名；不填则按任务名自动匹配</span>
-        </el-form-item>
-        <el-form-item label=" ">
-          <el-button type="primary" :loading="saving" @click="saveAll">保存</el-button>
-          <el-button :loading="testingSmartstrm" @click="testSmartstrm">测试触发</el-button>
-        </el-form-item>
-      </el-form>
-      <el-alert
-        type="info"
-        :closable="false"
-        show-icon
-        class="pansou-tip"
-        title="转存后自动触发"
-        description="配置后，每次转存成功会自动通知 SmartStrm 刷新对应任务。请先在 SmartStrm 中创建 movie / tv / anime 三个任务（任务名需与内容类型对应）。"
-      />
-    </el-card>
-
-    <el-card class="card" shadow="never">
-      <template #header><span>🔍 盘搜（Pansou 网盘搜索）</span></template>
-      <el-form label-width="120px" class="form">
-        <el-form-item label="Pansou 地址">
-          <el-input
-            v-model="pansouUrl"
-            placeholder="http://你的-pansou-实例:port（自部署 fish2018/pansou 后填写）"
-            class="key-input"
-          />
-          <span v-if="info?.pansou_url" class="masked-inline">当前：{{ info.pansou_url }}</span>
-        </el-form-item>
-        <el-form-item label=" ">
-          <el-button type="primary" :loading="saving" @click="saveAll">保存盘搜配置</el-button>
-        </el-form-item>
-        <el-alert
-          type="info"
-          :closable="false"
-          show-icon
-          class="pansou-tip"
-          title="详情页「搜盘」按钮依赖此服务"
-          description="Pansou 是一个开源网盘资源搜索服务（支持 115 / 夸克）。需自行部署在 NAS 或服务器上，把实例地址填到这里即可。未配置时详情页点「搜盘」会提示去设置。"
-        />
-      </el-form>
-    </el-card>
-
-    <el-card class="card" shadow="never">
-      <template #header><span>🛠 工具</span></template>
-      <div class="tools-row">
-        <div class="tool-item">
-          <div class="tool-info">
-            <div class="tool-title">☁️ 手动转存</div>
-            <div class="tool-desc">拿到一个网盘分享链接（不是从详情页搜出来的）时，粘贴到这里直接转存</div>
-          </div>
-          <el-button type="primary" plain @click="goTransfer">打开转存页</el-button>
         </div>
+      </el-tab-pane>
+
+      <!-- ========== Tab 4: 工具 ========== -->
+      <el-tab-pane name="tools">
+        <template #label>
+          <span class="tab-label"><span class="tab-icon">🛠</span> 工具</span>
+        </template>
+
+        <div class="tab-content">
+          <!-- 手动转存 -->
+          <div class="section-card">
+            <div class="section-title">☁️ 手动转存</div>
+            <p class="section-desc">
+              从外部拿到网盘分享链接（不是从详情页搜出来的）时，在这里直接转存。
+            </p>
+            <el-button type="primary" plain @click="goTransfer">
+              打开转存页 →
+            </el-button>
+          </div>
+
+          <!-- 修改密码 -->
+          <div class="section-card">
+            <div class="section-title">🔑 修改登录密码</div>
+            <el-form label-width="100px" class="form">
+              <el-form-item label="旧密码">
+                <el-input v-model="pwdForm.oldPassword" type="password" show-password placeholder="当前密码" class="half-input" />
+              </el-form-item>
+              <el-form-item label="新密码">
+                <el-input v-model="pwdForm.newPassword" type="password" show-password placeholder="至少 6 位" class="half-input" />
+              </el-form-item>
+              <el-form-item label="确认密码">
+                <el-input v-model="pwdForm.confirmPassword" type="password" show-password placeholder="再输一次" class="half-input" />
+              </el-form-item>
+              <el-form-item label=" ">
+                <el-button type="primary" :loading="changingPwd" @click="changePassword">修改密码</el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- 关于 -->
+          <div class="section-card about">
+            <div class="about-logo">
+              <img src="/logo.svg" alt="QuarkCine" class="about-logo-img" />
+            </div>
+            <div class="about-info">
+              <div class="about-name">QuarkCine</div>
+              <div class="about-desc">影视发现 · 一键转存 · STRM 生成</div>
+              <div class="about-meta">
+                基于 <el-link type="primary" href="https://www.themoviedb.org" target="_blank" :underline="false">TMDB</el-link>
+                数据 · 支持夸克 / 115 · SmartStrm 集成
+              </div>
+            </div>
+          </div>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
+
+    <!-- 目录选择器弹窗 -->
+    <el-dialog v-model="folderPickerVisible" title="选择目录" width="580px">
+      <el-breadcrumb separator="/" class="breadcrumb">
+        <el-breadcrumb-item
+          v-for="(item, idx) in folderPathStack"
+          :key="item.id"
+          @click="enterFolderByPath(idx)"
+        >
+          <span class="breadcrumb-item">{{ item.name }}</span>
+        </el-breadcrumb-item>
+      </el-breadcrumb>
+
+      <div v-loading="folderLoading" class="folder-list">
+        <div
+          v-for="folder in folderList"
+          :key="folder.id"
+          class="folder-item"
+          :class="{ selected: selectedFolder?.id === folder.id }"
+          @click="selectFolder(folder)"
+          @dblclick="enterFolder(folder)"
+        >
+          <el-icon size="18"><Folder /></el-icon>
+          <span class="folder-name">{{ folder.name }}</span>
+        </div>
+        <el-empty v-if="!folderLoading && folderList.length === 0" description="此目录为空" />
       </div>
-    </el-card>
 
-    <el-card class="card" shadow="never">
-      <template #header><span>🔑 修改登录密码</span></template>
-      <el-form label-width="120px" class="form">
-        <el-form-item label="旧密码">
-          <el-input
-            v-model="pwdForm.oldPassword"
-            type="password"
-            show-password
-            placeholder="当前登录密码"
-            class="key-input"
-            @keyup.enter="changePassword"
-          />
-        </el-form-item>
-        <el-form-item label="新密码">
-          <el-input
-            v-model="pwdForm.newPassword"
-            type="password"
-            show-password
-            placeholder="至少 6 位"
-            class="key-input"
-            @keyup.enter="changePassword"
-          />
-        </el-form-item>
-        <el-form-item label="确认新密码">
-          <el-input
-            v-model="pwdForm.confirmPassword"
-            type="password"
-            show-password
-            placeholder="再输一次新密码"
-            class="key-input"
-            @keyup.enter="changePassword"
-          />
-        </el-form-item>
-        <el-form-item label=" ">
-          <el-button type="primary" :loading="changingPwd" @click="changePassword">修改密码</el-button>
-        </el-form-item>
-        <p class="pwd-hint">
-          💡 密码以加密形式保存在服务端，修改后需用新密码重新登录。
-          如果忘记旧密码，可重新部署并用 <code>ADMIN_PASSWORD</code> 环境变量重置。
-        </p>
-      </el-form>
-    </el-card>
-
-    <el-card class="card" shadow="never">
-      <template #header><span>ℹ️ 当前环境信息</span></template>
-      <el-descriptions :column="1" size="small" border>
-        <el-descriptions-item label="Key 来源">
-          {{ info ? sourceLabel : '—' }}
-        </el-descriptions-item>
-        <el-descriptions-item label="API 语言">{{ info?.language || '—' }}</el-descriptions-item>
-        <el-descriptions-item label="图片代理">
-          {{ info?.image_proxy_base || '未设置（使用 TMDB 官方 CDN 直链）' }}
-        </el-descriptions-item>
-      </el-descriptions>
-    </el-card>
+      <template #footer>
+        <el-button @click="folderPickerVisible = false">取消</el-button>
+        <el-button type="primary" :disabled="!selectedFolder" @click="confirmFolderSelection">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
-  
-  <!-- 目录选择器弹窗 -->
-  <el-dialog v-model="folderPickerVisible" title="选择目录" width="600px">
-    <el-breadcrumb separator="/" class="breadcrumb">
-      <el-breadcrumb-item
-        v-for="(item, idx) in folderPathStack"
-        :key="item.id"
-        @click="enterFolderByPath(idx)"
-      >
-        <span class="breadcrumb-item">{{ item.name }}</span>
-      </el-breadcrumb-item>
-    </el-breadcrumb>
-    
-    <div v-loading="folderLoading" class="folder-list">
-      <div
-        v-for="folder in folderList"
-        :key="folder.id"
-        class="folder-item"
-        :class="{ selected: selectedFolder?.id === folder.id }"
-        @click="selectFolder(folder)"
-        @dblclick="enterFolder(folder)"
-      >
-        <el-icon size="20"><Folder /></el-icon>
-        <span class="folder-name">{{ folder.name }}</span>
-      </div>
-      <el-empty v-if="!folderLoading && folderList.length === 0" description="此目录为空" />
-    </div>
-    
-    <template #footer>
-      <el-button @click="folderPickerVisible = false">取消</el-button>
-      <el-button type="primary" :disabled="!selectedFolder" @click="confirmFolderSelection">确定</el-button>
-    </template>
-  </el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -358,12 +382,14 @@ import { authApi, settingsApi, smartstrmApi } from '@/api/tmdb';
 import { useUserStore } from '@/stores/user';
 import type { SettingsInfo } from '@/types';
 
+const activeTab = ref('source');
 const apiKey = ref('');
 const info = ref<SettingsInfo | null>(null);
 const saving = ref(false);
 const testing = ref(false);
 const testingNotify = ref(false);
 const testingSmartstrm = ref(false);
+const tmdbLanguage = ref('zh-CN');
 
 // 网盘
 const cookieQuark = ref('');
@@ -372,7 +398,6 @@ const cookie115 = ref('');
 const folderId115 = ref('');
 
 // 分类目录
-const folderTab = ref<'quark' | '115'>('quark');
 const quarkFolders = ref({ movie: '', tv: '', default: '' });
 const folders115 = ref({ movie: '', tv: '', default: '' });
 
@@ -384,21 +409,21 @@ const folderPathStack = ref<{ id: string; name: string }[]>([{ id: '0', name: '�
 const selectedFolder = ref<{ id: string; name: string; isFolder: boolean } | null>(null);
 const currentPickerType = ref<'quark' | '115'>('quark');
 const currentPickerField = ref<'movie' | 'tv' | 'default'>('movie');
+
 // 通知
 const telegramToken = ref('');
 const telegramChatIds = ref('');
 const discordWebhooks = ref('');
-const notifyTargets = ref<string[]>(['telegram_chat', 'discord_channel']);
-// 盘搜
-const pansouUrl = ref('');
 
-// SmartStrm
+// 盘搜 & SmartStrm
+const pansouUrl = ref('');
 const smartstrmWebhookUrl = ref('');
 const smartstrmMapping = ref('');
 
 // 修改密码
 const pwdForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' });
 const changingPwd = ref(false);
+
 const router = useRouter();
 const userStore = useUserStore();
 
@@ -412,11 +437,11 @@ const sourceLabel = computed(() => {
 
 async function load() {
   info.value = await settingsApi.get();
-  apiKey.value = ''; // 不回显完整 Key，仅显示脱敏
+  apiKey.value = '';
   folderIdQuark.value = info.value.folder_id_quark || '';
   folderId115.value = info.value.folder_id_115 || '';
-  
-  // 加载分类目录配置（确保每次都设置，包括空值）
+  tmdbLanguage.value = info.value.language || 'zh-CN';
+
   quarkFolders.value = {
     movie: info.value.quark_folders?.movie || '',
     tv: info.value.quark_folders?.tv || '',
@@ -427,10 +452,9 @@ async function load() {
     tv: info.value.folders_115?.tv || '',
     default: info.value.folders_115?.default || '',
   };
-  
+
   telegramChatIds.value = info.value.telegram_chat_ids || '';
   discordWebhooks.value = info.value.discord_webhook_urls || '';
-  notifyTargets.value = info.value.notification_targets?.length ? info.value.notification_targets : ['telegram_chat', 'discord_channel'];
   pansouUrl.value = info.value.pansou_url || '';
   smartstrmWebhookUrl.value = info.value.smartstrm_webhook_url || '';
   smartstrmMapping.value = info.value.smartstrm_storage_mapping || '';
@@ -464,29 +488,17 @@ async function saveAll() {
       folder_id_quark: folderIdQuark.value.trim(),
       cookie_115: cookie115.value.trim(),
       folder_id_115: folderId115.value.trim(),
+      quark_folders: JSON.stringify(quarkFolders.value),
+      '115_folders': JSON.stringify(folders115.value),
       telegram_bot_token: telegramToken.value.trim(),
       telegram_chat_ids: telegramChatIds.value.trim(),
       discord_webhook_urls: discordWebhooks.value.trim(),
-      notification_targets: JSON.stringify(notifyTargets.value),
       pansou_url: pansouUrl.value.trim(),
       smartstrm_webhook_url: smartstrmWebhookUrl.value.trim(),
       smartstrm_storage_mapping: smartstrmMapping.value.trim(),
     });
     ElMessage.success('配置已保存');
     await load();
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function saveFolderConfig() {
-  saving.value = true;
-  try {
-    await settingsApi.save({
-      quark_folders: JSON.stringify(quarkFolders.value),
-      '115_folders': JSON.stringify(folders115.value),
-    });
-    ElMessage.success('目录配置已保存');
   } finally {
     saving.value = false;
   }
@@ -547,11 +559,8 @@ async function testKey() {
   testing.value = true;
   try {
     const res = await settingsApi.test(key || '');
-    if (res.valid) {
-      ElMessage.success(res.message);
-    } else {
-      ElMessage.error(res.message);
-    }
+    if (res.valid) ElMessage.success(res.message);
+    else ElMessage.error(res.message);
   } finally {
     testing.value = false;
   }
@@ -561,11 +570,8 @@ async function testNotify() {
   testingNotify.value = true;
   try {
     const res = await settingsApi.testNotify();
-    if (res.ok) {
-      ElMessage.success(res.message);
-    } else {
-      ElMessage.error(res.message);
-    }
+    if (res.ok) ElMessage.success(res.message);
+    else ElMessage.error(res.message);
   } finally {
     testingNotify.value = false;
   }
@@ -575,11 +581,8 @@ async function testSmartstrm() {
   testingSmartstrm.value = true;
   try {
     const res = await smartstrmApi.notify(undefined, 'movie');
-    if (res.success) {
-      ElMessage.success(res.message);
-    } else {
-      ElMessage.error(res.message);
-    }
+    if (res.success) ElMessage.success(res.message);
+    else ElMessage.error(res.message);
   } finally {
     testingSmartstrm.value = false;
   }
@@ -647,110 +650,211 @@ onMounted(load);
 </script>
 
 <style scoped>
-.page-title {
-  font-size: 24px;
-  margin-bottom: 16px;
+/* === 页面布局 === */
+.settings {
+  padding: 0;
+  min-height: 100%;
 }
-.alert {
-  margin-bottom: 16px;
-}
-.card {
-  background: #171b23;
-  border-color: #262c37;
-  margin-bottom: 16px;
-}
-.card :deep(.el-card__header) {
-  border-bottom-color: #262c37;
-}
-.card-header {
+
+/* 顶部栏 */
+.settings-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 0;
 }
+.header-left {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+.page-subtitle {
+  color: #8b93a1;
+  font-size: 13px;
+}
+
+/* 状态徽章 */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.status-badge.ok {
+  background: rgba(64, 158, 255, 0.12);
+  color: #409eff;
+  border: 1px solid rgba(64, 158, 255, 0.3);
+}
+.status-badge.warn {
+  background: rgba(230, 162, 60, 0.12);
+  color: #e6a23c;
+  border: 1px solid rgba(230, 162, 60, 0.3);
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* 警告 */
+.top-alert {
+  margin: 16px 24px 0;
+}
+
+/* === Tabs === */
+.settings-tabs {
+  margin-top: 16px;
+  padding: 0 24px 24px;
+}
+
+.settings-tabs :deep(.el-tabs__header) {
+  min-width: 160px;
+}
+
+.settings-tabs :deep(.el-tabs__content) {
+  padding-left: 24px;
+  border-left: 1px solid #262c37;
+  margin-left: 0;
+  min-height: 600px;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.tab-icon {
+  font-size: 16px;
+}
+
+/* === Tab 内容 === */
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 40px;
+}
+
+/* 区块卡片 */
+.section-card {
+  background: #171b23;
+  border: 1px solid #262c37;
+  border-radius: 10px;
+  padding: 20px 24px;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.section-desc {
+  color: #8b93a1;
+  font-size: 13px;
+  margin: 0 0 16px;
+  line-height: 1.6;
+}
+
+/* 表单 */
 .form {
-  max-width: 760px;
+  max-width: 680px;
 }
-.key-input {
-  max-width: 520px;
+.full-input {
+  max-width: 480px;
 }
-.masked {
-  font-family: monospace;
-  color: #c8cdd6;
+.half-input {
+  max-width: 260px;
 }
-.masked-hint {
-  color: #6b7280;
-  font-size: 12px;
-  margin-left: 8px;
-}
-.masked-inline {
-  margin-left: 10px;
+.field-hint {
+  display: block;
   font-size: 12px;
   color: #8b93a1;
+  margin-top: 4px;
 }
-.howto-title {
-  font-size: 15px;
-  margin-bottom: 10px;
+.field-hint.ok {
+  color: #67c23a;
 }
-.howto {
+
+/* 分类目录行 */
+.folder-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.chip-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chip-label {
+  width: 40px;
+  font-size: 13px;
+  color: #8b93a1;
+  flex-shrink: 0;
+}
+
+/* 信息表格 */
+.info-table {
+  margin-top: 0;
+}
+
+/* 教程 */
+.howto-list {
   padding-left: 20px;
   color: #c8cdd6;
   font-size: 13px;
-  line-height: 2;
+  line-height: 2.2;
+  margin: 0 0 10px;
 }
 .howto-note {
-  margin-top: 10px;
   color: #8b93a1;
   font-size: 12px;
-  line-height: 1.8;
+  line-height: 1.7;
+  margin: 0;
 }
 .howto-note code {
   background: #232936;
-  padding: 1px 6px;
-  border-radius: 4px;
-  color: #f0b429;
-}
-.pansou-tip {
-  margin-top: 6px;
-}
-.tools-row {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.tool-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
-}
-.tool-title {
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.tool-desc {
-  font-size: 12px;
-  color: #8b93a1;
-}
-.pwd-hint {
-  color: #8b93a1;
-  font-size: 12px;
-  line-height: 1.8;
-  margin: 0;
-}
-.pwd-hint code {
-  background: #232936;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px 5px;
+  border-radius: 3px;
   color: #f0b429;
 }
 
+/* 关于卡片 */
+.about {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.about-logo-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+}
+.about-name {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.about-desc {
+  color: #c8cdd6;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.about-meta {
+  color: #8b93a1;
+  font-size: 12px;
+}
+
 /* 目录选择器 */
-.alert-sm {
-  margin-bottom: 12px;
-}
-.folder-tabs {
-  margin-bottom: 16px;
-}
 .breadcrumb {
   margin-bottom: 12px;
   padding: 8px 12px;
@@ -759,26 +863,28 @@ onMounted(load);
 }
 .breadcrumb-item {
   cursor: pointer;
+  font-size: 13px;
 }
 .breadcrumb-item:hover {
   color: #409eff;
 }
 .folder-list {
-  min-height: 300px;
-  max-height: 400px;
+  min-height: 260px;
+  max-height: 360px;
   overflow-y: auto;
   border: 1px solid #262c37;
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 8px;
 }
 .folder-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 9px 12px;
   cursor: pointer;
   border-radius: 4px;
-  transition: background 0.2s;
+  transition: background 0.15s;
+  font-size: 13px;
 }
 .folder-item:hover {
   background: #232936;
