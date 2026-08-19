@@ -118,12 +118,13 @@ function goDetail(item: MediaItem) {
 }
 
 // 滚动监听
-function handleScroll() {
+function handleScroll(e: Event) {
   if (loading.value || noMore.value) return;
   
-  const scrollTop = window.scrollY || document.documentElement.scrollTop;
-  const scrollHeight = document.documentElement.scrollHeight;
-  const clientHeight = window.innerHeight;
+  const target = e.target as HTMLElement;
+  const scrollTop = target.scrollTop;
+  const scrollHeight = target.scrollHeight;
+  const clientHeight = target.clientHeight;
   
   // 距离底部 200px 时触发加载
   if (scrollTop + clientHeight >= scrollHeight - 200) {
@@ -139,11 +140,18 @@ watch(() => route.path, (newPath) => {
 
 onMounted(() => {
   loadMore();
-  window.addEventListener('scroll', handleScroll);
+  // 监听 el-main 的滚动
+  const main = document.querySelector('.el-main');
+  if (main) {
+    main.addEventListener('scroll', handleScroll);
+  }
 });
 
 onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll);
+  const main = document.querySelector('.el-main');
+  if (main) {
+    main.removeEventListener('scroll', handleScroll);
+  }
 });
 </script>
 
