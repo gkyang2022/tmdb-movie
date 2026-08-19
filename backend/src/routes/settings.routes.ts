@@ -45,13 +45,13 @@ settingsRouter.get('/', (_req: Request, res: Response) => {
     cookie_115_masked: getSettingMasked('cookie_115'),
     folder_id_quark: getSetting('folder_id_quark') || '',
     folder_id_115: getSetting('folder_id_115') || '',
-    quark_folders: quarkFolders ? JSON.parse(quarkFolders) : { movie: '', tv: '', default: '' },
-    folders_115: folders115 ? JSON.parse(folders115) : { movie: '', tv: '', default: '' },
+    quark_folders: (() => { try { return quarkFolders ? JSON.parse(quarkFolders) : { movie: '', tv: '', default: '' }; } catch { return { movie: '', tv: '', default: '' }; } })(),
+    folders_115: (() => { try { return folders115 ? JSON.parse(folders115) : { movie: '', tv: '', default: '' }; } catch { return { movie: '', tv: '', default: '' }; } })(),
     // 通知
     telegram_bot_token_masked: getSettingMasked('telegram_bot_token'),
     telegram_chat_ids: getSetting('telegram_chat_ids') || '',
     discord_webhook_urls: getSetting('discord_webhook_urls') || '',
-    notification_targets: targets ? JSON.parse(targets) : ['telegram_chat', 'discord_channel'],
+    notification_targets: (() => { try { return targets ? JSON.parse(targets) : ['telegram_chat', 'discord_channel']; } catch { return ['telegram_chat', 'discord_channel']; } })(),
     pansou_url: getSetting('pansou_url') || '',
     // SmartStrm
     smartstrm_webhook_url: getSetting('smartstrm_webhook_url') || '',
