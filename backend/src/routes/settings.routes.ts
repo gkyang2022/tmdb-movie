@@ -17,11 +17,13 @@ function keySource(): 'settings' | 'env' | 'none' {
 const SENSITIVE_KEYS = ['tmdb_api_key', 'cookie_quark', 'cookie_115', 'telegram_bot_token'];
 
 /** 非敏感设置键（明文存储，原样回显） */
-const PLAIN_KEYS = ['pansou_url', 'folder_id_quark', 'folder_id_115', 'telegram_chat_ids', 'discord_webhook_urls', 'notification_targets'];
+const PLAIN_KEYS = ['pansou_url', 'folder_id_quark', 'folder_id_115', 'quark_folders', '115_folders', 'telegram_chat_ids', 'discord_webhook_urls', 'notification_targets'];
 
 /** 读取设置（脱敏回显） */
 settingsRouter.get('/', (_req: Request, res: Response) => {
   const targets = getSetting('notification_targets');
+  const quarkFolders = getSetting('quark_folders');
+  const folders115 = getSetting('115_folders');
   res.json({
     tmdb_api_key_masked: getSettingMasked('tmdb_api_key'),
     source: keySource(),
@@ -32,6 +34,8 @@ settingsRouter.get('/', (_req: Request, res: Response) => {
     cookie_115_masked: getSettingMasked('cookie_115'),
     folder_id_quark: getSetting('folder_id_quark') || '',
     folder_id_115: getSetting('folder_id_115') || '',
+    quark_folders: quarkFolders ? JSON.parse(quarkFolders) : { movie: '', tv: '', default: '' },
+    folders_115: folders115 ? JSON.parse(folders115) : { movie: '', tv: '', default: '' },
     // 通知
     telegram_bot_token_masked: getSettingMasked('telegram_bot_token'),
     telegram_chat_ids: getSetting('telegram_chat_ids') || '',
