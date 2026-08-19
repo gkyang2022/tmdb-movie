@@ -1,8 +1,9 @@
 <template>
   <div class="login-page">
     <div class="login-box">
-      <h1 class="logo">🎬 TMDB Movie</h1>
-      <p class="subtitle">影视探索 · 数据来自 The Movie Database</p>
+      <div class="logo-wrap"><img src="/logo.svg" alt="QuarkCine" class="logo-img" /></div>
+      <h1 class="logo">QuarkCine</h1>
+      <p class="subtitle">影视探索 · 数据来自 TMDB</p>
       <el-form @submit.prevent="doLogin">
         <el-form-item>
           <el-input v-model="username" placeholder="用户名" size="large" :prefix-icon="User" />
@@ -75,9 +76,18 @@ async function doLogin() {
   border-radius: 14px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
+.logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.logo-img {
+  width: 72px;
+  height: 72px;
+}
 .logo {
   text-align: center;
-  font-size: 26px;
+  font-size: 24px;
   margin-bottom: 4px;
 }
 .subtitle {

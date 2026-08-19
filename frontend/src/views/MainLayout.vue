@@ -1,7 +1,10 @@
 <template>
   <el-container class="layout">
     <el-aside width="200px" class="sidebar">
-      <div class="brand">🎬 TMDB Movie</div>
+      <div class="brand">
+        <img src="/logo.svg" alt="QuarkCine" class="brand-logo" />
+        <span class="brand-name">QuarkCine</span>
+      </div>
       <el-menu :default-active="$route.path" router background-color="#14181f" text-color="#9aa3b2" active-text-color="#ffffff" class="menu">
         <el-menu-item index="/home">
           <el-icon><HomeFilled /></el-icon><span>首页</span>
@@ -62,6 +65,14 @@ function logout() {
   font-size: 17px;
   font-weight: 700;
   color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
 }
 .menu {
   border-right: none;
