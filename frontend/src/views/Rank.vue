@@ -1,13 +1,9 @@
 <template>
   <div class="rank">
     <div class="rank-header">
-      <h1>🏆 {{ mediaType === 'movie' ? '电影 Top' : '剧集 Top' }}</h1>
+      <h1>{{ mediaType === 'movie' ? '🎬 电影' : '📺 剧集' }}</h1>
+      <p class="subtitle">{{ mediaType === 'movie' ? '正在上映' : '正在播出' }}</p>
     </div>
-
-    <el-radio-group v-model="mediaType" class="type-switch" @change="load(1)">
-      <el-radio-button value="movie">电影</el-radio-button>
-      <el-radio-button value="tv">剧集</el-radio-button>
-    </el-radio-group>
 
     <div v-loading="loading" class="grid-container">
       <div
@@ -35,9 +31,9 @@
             ⭐ {{ item.rating.toFixed(1) }}
           </div>
           
-          <!-- 排名徽章 -->
-          <div v-if="idx < 3" class="rank-badge" :class="`rank-${idx + 1}`">
-            {{ idx + 1 }}
+          <!-- 类型标签 -->
+          <div class="type-badge" :class="mediaType">
+            {{ mediaType === 'movie' ? '电影' : '剧集' }}
           </div>
         </div>
         
@@ -54,7 +50,7 @@
       <el-pagination
         layout="prev, pager, next"
         :total="totalResults"
-        :page-size="20"
+        :page-size="80"
         :current-page="page"
         @current-change="load"
       />
@@ -63,23 +59,30 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { tmdbApi } from '@/api/tmdb';
 import type { MediaItem } from '@/types';
 
-const mediaType = ref<'movie' | 'tv'>('movie');
+const route = useRoute();
+const router = useRouter();
+
+// 根据 URL 路径决定类型：/rank/movie 或 /rank/tv
+const mediaType = ref<'movie' | 'tv'>(route.path.includes('/tv') ? 'tv' : 'movie');
 const items = ref<MediaItem[]>([]);
 const page = ref(1);
 const totalPages = ref(1);
 const totalResults = ref(0);
 const loading = ref(false);
-const router = useRouter();
 
 async function load(p = 1) {
   loading.value = true;
   try {
-    const res = await tmdbApi.topRated(mediaType.value, p);
+    // 电影分类用 nowPlaying，剧集分类用 onTheAir
+    const res = mediaType.value === 'movie' 
+      ? await tmdbApi.nowPlaying(p)
+      : await tmdbApi.onTheAir(p);
+    
     items.value = res.items;
     page.value = res.page;
     totalPages.value = res.totalPages;
@@ -93,6 +96,12 @@ function goDetail(item: MediaItem) {
   router.push(`/detail/${item.type}/${item.id}`);
 }
 
+// 监听路由变化切换类型
+watch(() => route.path, (newPath) => {
+  mediaType.value = newPath.includes('/tv') ? 'tv' : 'movie';
+  load(1);
+});
+
 onMounted(() => load(1));
 </script>
 
@@ -101,30 +110,53 @@ onMounted(() => load(1));
   padding: 0 20px;
 }
 
+.rank-header {
+  margin-bottom: 20px;
+}
+
 .rank-header h1 {
   font-size: 28px;
   font-weight: 700;
-  margin-bottom: 20px;
   color: #fff;
+  margin-bottom: 4px;
 }
 
-.type-switch {
-  margin-bottom: 24px;
+.subtitle {
+  font-size: 14px;
+  color: #8b93a1;
 }
 
-/* 网格布局 */
+/* 网格布局：固定 8 列 */
 .grid-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 16px;
   min-height: 200px;
   margin-bottom: 20px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1600px) {
   .grid-container {
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+@media (max-width: 1200px) {
+  .grid-container {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .grid-container {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .grid-container {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
   }
 }
 
@@ -132,20 +164,20 @@ onMounted(() => load(1));
 .media-card {
   cursor: pointer;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .media-card:hover {
-  transform: translateY(-8px) scale(1.03);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
 }
 
 .poster-wrapper {
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
   background: #1a1e26;
 }
@@ -168,68 +200,55 @@ onMounted(() => load(1));
 /* 评分徽章 */
 .rating-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 6px;
+  right: 6px;
   background: rgba(0, 0, 0, 0.75);
   color: #fbbf24;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 600;
   backdrop-filter: blur(4px);
 }
 
-/* 排名徽章 */
-.rank-badge {
+/* 类型标签 */
+.type-badge {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-size: 14px;
-  font-weight: 800;
-  font-style: italic;
+  top: 6px;
+  left: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
-.rank-badge.rank-1 {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: #000;
-  box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
-}
-
-.rank-badge.rank-2 {
-  background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
-  color: #000;
-  box-shadow: 0 2px 8px rgba(209, 213, 219, 0.3);
-}
-
-.rank-badge.rank-3 {
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+.type-badge.movie {
+  background: rgba(59, 130, 246, 0.85);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+}
+
+.type-badge.tv {
+  background: rgba(139, 92, 246, 0.85);
+  color: #fff;
 }
 
 /* 卡片信息 */
 .card-info {
-  padding: 10px 4px;
+  padding: 8px 4px;
 }
 
 .title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .meta {
-  font-size: 12px;
+  font-size: 11px;
   color: #8b93a1;
 }
 

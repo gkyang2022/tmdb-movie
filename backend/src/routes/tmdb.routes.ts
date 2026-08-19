@@ -56,6 +56,13 @@ tmdbRouter.get('/upcoming', async (req: Request, res: Response) => {
   } catch (e) { handleError(res, e); }
 });
 
+tmdbRouter.get('/on-the-air', async (req: Request, res: Response) => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    res.json(await tmdbService.getOnTheAir(page));
+  } catch (e) { handleError(res, e); }
+});
+
 tmdbRouter.get('/search', async (req: Request, res: Response) => {
   try {
     const q = String(req.query.q || '').trim();

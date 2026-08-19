@@ -17,6 +17,9 @@ export const tmdbApi = {
   upcoming: (page = 1) =>
     request.get<ListResponse>('/tmdb/upcoming', { params: { page } }).then((r) => r.data),
 
+  onTheAir: (page = 1) =>
+    request.get<ListResponse>('/tmdb/on-the-air', { params: { page } }).then((r) => r.data),
+
   search: (q: string, type = 'multi', page = 1) =>
     request.get<ListResponse>('/tmdb/search', { params: { q, type, page } }).then((r) => r.data),
 

@@ -6,10 +6,10 @@
         <el-menu-item index="/home">
           <el-icon><HomeFilled /></el-icon><span>首页</span>
         </el-menu-item>
-        <el-menu-item index="/rank?type=movie">
+        <el-menu-item index="/rank/movie">
           <el-icon><Film /></el-icon><span>电影</span>
         </el-menu-item>
-        <el-menu-item index="/rank?type=tv">
+        <el-menu-item index="/rank/tv">
           <el-icon><Monitor /></el-icon><span>剧集</span>
         </el-menu-item>
         <el-menu-item index="/search">

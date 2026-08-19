@@ -226,6 +226,12 @@ export class TmdbService {
     return this.list('/movie/upcoming', { page, region: 'CN' }, 'movie', cacheKey);
   }
 
+  /** 正在播出（剧集） */
+  getOnTheAir(page = 1): Promise<ListResponse> {
+    const cacheKey = `ontheair_${page}`;
+    return this.list('/tv/on_the_air', { page }, 'tv', cacheKey);
+  }
+
   /** 搜索 */
   search(query: string, type: 'movie' | 'tv' | 'multi' = 'multi', page = 1): Promise<ListResponse> {
     const cacheKey = `search_${query}_${type}_${page}`;

@@ -11,7 +11,9 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/home' },
         { path: 'home', name: 'home', component: () => import('@/views/Home.vue') },
-        { path: 'rank', name: 'rank', component: () => import('@/views/Rank.vue') },
+        { path: 'rank', redirect: '/rank/movie' },
+        { path: 'rank/movie', name: 'rank-movie', component: () => import('@/views/Rank.vue') },
+        { path: 'rank/tv', name: 'rank-tv', component: () => import('@/views/Rank.vue') },
         { path: 'search', name: 'search', component: () => import('@/views/Search.vue') },
         { path: 'detail/:type/:id', name: 'detail', component: () => import('@/views/Detail.vue') },
         { path: 'transfer', name: 'transfer', component: () => import('@/views/Transfer.vue') },
