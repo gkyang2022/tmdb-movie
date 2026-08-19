@@ -23,7 +23,6 @@
           登 录
         </el-button>
       </el-form>
-      <p class="tip">默认账号 admin / admin123（部署后请修改 ADMIN_PASSWORD）</p>
     </div>
   </div>
 </template>
@@ -99,10 +98,5 @@ async function doLogin() {
 .login-btn {
   width: 100%;
 }
-.tip {
-  margin-top: 18px;
-  text-align: center;
-  color: #5c6472;
-  font-size: 11px;
-}
+
 </style>
