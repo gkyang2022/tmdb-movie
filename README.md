@@ -6,7 +6,7 @@
 
 数据源稳定（TMDB 官方直链），无需 Cookie / 反爬hack；转存链路打通夸克 + 115；配合 SmartStrm 可自动生成 STRM 文件，接入 Jellyfin / 飞牛影视等媒体库播放。
 
-![QuarkCine](https://raw.githubusercontent.com/gkyang2022/tmdb-movie/main/screenshot.png)
+![QuarkCine](https://raw.githubusercontent.com/gkyang2022/quarkcine/main/screenshot.png)
 
 ## ✨ 功能
 
