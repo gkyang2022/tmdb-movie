@@ -375,21 +375,17 @@ async function load() {
   folderIdQuark.value = info.value.folder_id_quark || '';
   folderId115.value = info.value.folder_id_115 || '';
   
-  // 加载分类目录配置
-  if (info.value.quark_folders) {
-    quarkFolders.value = {
-      movie: info.value.quark_folders.movie || '',
-      tv: info.value.quark_folders.tv || '',
-      default: info.value.quark_folders.default || '',
-    };
-  }
-  if (info.value.folders_115) {
-    folders115.value = {
-      movie: info.value.folders_115.movie || '',
-      tv: info.value.folders_115.tv || '',
-      default: info.value.folders_115.default || '',
-    };
-  }
+  // 加载分类目录配置（确保每次都设置，包括空值）
+  quarkFolders.value = {
+    movie: info.value.quark_folders?.movie || '',
+    tv: info.value.quark_folders?.tv || '',
+    default: info.value.quark_folders?.default || '',
+  };
+  folders115.value = {
+    movie: info.value.folders_115?.movie || '',
+    tv: info.value.folders_115?.tv || '',
+    default: info.value.folders_115?.default || '',
+  };
   
   telegramChatIds.value = info.value.telegram_chat_ids || '';
   discordWebhooks.value = info.value.discord_webhook_urls || '';
