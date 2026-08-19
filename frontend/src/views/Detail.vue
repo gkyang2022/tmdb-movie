@@ -120,7 +120,18 @@
                 size="small"
                 @click="openPansou(item.url)"
               >
-                打开 / 转存
+                打开
+              </el-button>
+              <el-button
+                v-if="item.url"
+                type="success"
+                link
+                size="small"
+                :loading="pansouBusy[idx]"
+                :disabled="!!pansouDone[idx]"
+                @click="transferPansou(idx, item)"
+              >
+                {{ pansouDone[idx] ? '✓ 已转存' : '转存' }}
               </el-button>
             </div>
           </div>
@@ -138,7 +149,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { tmdbApi, pansouApi } from '@/api/tmdb';
+import { tmdbApi, pansouApi, transferApi } from '@/api/tmdb';
 import type { MediaDetail, SearchResource } from '@/types';
 import MediaCard from './components/MediaCard.vue';
 
@@ -194,6 +205,29 @@ function pansouTypeName(type: string): string {
 
 function openPansou(url: string) {
   if (url) window.open(url, '_blank');
+}
+
+// ---------------- 盘搜结果直接转存 ----------------
+const pansouBusy = ref<Record<number, boolean>>({});
+const pansouDone = ref<Record<number, boolean>>({});
+
+async function transferPansou(idx: number, item: SearchResource) {
+  if (pansouDone.value[idx] || pansouBusy.value[idx]) return;
+  const type: 'quark' | '115' = item.type === '115' ? '115' : 'quark';
+  pansouBusy.value[idx] = true;
+  try {
+    const res = await transferApi.save(item.url, type);
+    if (res.ok) {
+      pansouDone.value[idx] = true;
+      ElMessage.success(res.message ? `转存成功：${res.message}` : '转存成功');
+    } else {
+      ElMessage.error(res.error || '转存失败');
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '转存请求失败');
+  } finally {
+    pansouBusy.value[idx] = false;
+  }
 }
 
 async function searchPansou(refresh = false) {
