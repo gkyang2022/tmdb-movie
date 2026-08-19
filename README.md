@@ -115,6 +115,12 @@ npm run dev
 - API Key、Cookie 等敏感配置 **AES-256-GCM 加密存储**
 - 所有接口需登录认证（JWT）
 
+## 🙏 鸣谢
+
+本项目参考了 [horacemovie](https://github.com/gkyang2022/horacemovie) 的项目架构设计。
+
+horacemovie 使用豆瓣 API，本项目改用 [TMDB](https://www.themoviedb.org/) API，数据源更稳定、国际化支持更好，并在此基础上扩展了 SmartStrm 集成功能。
+
 ## 📄 License
 
 MIT
