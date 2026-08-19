@@ -185,6 +185,42 @@
     </el-card>
 
     <el-card class="card" shadow="never">
+      <template #header><span>🤖 SmartStrm STRM 生成</span></template>
+      <el-form label-width="140px" class="form">
+        <el-form-item label="Webhook 地址">
+          <el-input
+            v-model="smartstrmWebhookUrl"
+            placeholder="http://10.0.0.191:8024/webhook/xxxxx"
+            class="key-input"
+          />
+          <span class="masked-inline">在 SmartStrm「系统设置 → Webhook」中复制完整 URL</span>
+        </el-form-item>
+        <el-form-item label="存储映射（可选）">
+          <el-input
+            v-model="smartstrmMapping"
+            placeholder='{"movie": "quark", "tv": "quark"}'
+            type="textarea"
+            :rows="2"
+            class="key-input"
+          />
+          <span class="masked-inline">JSON，键为 movie/tv/anime，值为 SmartStrm 中存储名；不填则按任务名自动匹配</span>
+        </el-form-item>
+        <el-form-item label=" ">
+          <el-button type="primary" :loading="saving" @click="saveAll">保存</el-button>
+          <el-button :loading="testingSmartstrm" @click="testSmartstrm">测试触发</el-button>
+        </el-form-item>
+      </el-form>
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        class="pansou-tip"
+        title="转存后自动触发"
+        description="配置后，每次转存成功会自动通知 SmartStrm 刷新对应任务。请先在 SmartStrm 中创建 movie / tv / anime 三个任务（任务名需与内容类型对应）。"
+      />
+    </el-card>
+
+    <el-card class="card" shadow="never">
       <template #header><span>🔍 盘搜（Pansou 网盘搜索）</span></template>
       <el-form label-width="120px" class="form">
         <el-form-item label="Pansou 地址">
@@ -318,7 +354,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Folder } from '@element-plus/icons-vue';
-import { authApi, settingsApi } from '@/api/tmdb';
+import { authApi, settingsApi, smartstrmApi } from '@/api/tmdb';
 import { useUserStore } from '@/stores/user';
 import type { SettingsInfo } from '@/types';
 
@@ -327,6 +363,7 @@ const info = ref<SettingsInfo | null>(null);
 const saving = ref(false);
 const testing = ref(false);
 const testingNotify = ref(false);
+const testingSmartstrm = ref(false);
 
 // 网盘
 const cookieQuark = ref('');
@@ -354,6 +391,10 @@ const discordWebhooks = ref('');
 const notifyTargets = ref<string[]>(['telegram_chat', 'discord_channel']);
 // 盘搜
 const pansouUrl = ref('');
+
+// SmartStrm
+const smartstrmWebhookUrl = ref('');
+const smartstrmMapping = ref('');
 
 // 修改密码
 const pwdForm = ref({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -391,6 +432,8 @@ async function load() {
   discordWebhooks.value = info.value.discord_webhook_urls || '';
   notifyTargets.value = info.value.notification_targets?.length ? info.value.notification_targets : ['telegram_chat', 'discord_channel'];
   pansouUrl.value = info.value.pansou_url || '';
+  smartstrmWebhookUrl.value = info.value.smartstrm_webhook_url || '';
+  smartstrmMapping.value = info.value.smartstrm_storage_mapping || '';
   cookieQuark.value = '';
   cookie115.value = '';
   telegramToken.value = '';
@@ -426,6 +469,8 @@ async function saveAll() {
       discord_webhook_urls: discordWebhooks.value.trim(),
       notification_targets: JSON.stringify(notifyTargets.value),
       pansou_url: pansouUrl.value.trim(),
+      smartstrm_webhook_url: smartstrmWebhookUrl.value.trim(),
+      smartstrm_storage_mapping: smartstrmMapping.value.trim(),
     });
     ElMessage.success('配置已保存');
     await load();
@@ -523,6 +568,20 @@ async function testNotify() {
     }
   } finally {
     testingNotify.value = false;
+  }
+}
+
+async function testSmartstrm() {
+  testingSmartstrm.value = true;
+  try {
+    const res = await smartstrmApi.notify(undefined, 'movie');
+    if (res.success) {
+      ElMessage.success(res.message);
+    } else {
+      ElMessage.error(res.message);
+    }
+  } finally {
+    testingSmartstrm.value = false;
   }
 }
 

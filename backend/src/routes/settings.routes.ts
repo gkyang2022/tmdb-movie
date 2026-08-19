@@ -17,7 +17,18 @@ function keySource(): 'settings' | 'env' | 'none' {
 const SENSITIVE_KEYS = ['tmdb_api_key', 'cookie_quark', 'cookie_115', 'telegram_bot_token'];
 
 /** 非敏感设置键（明文存储，原样回显） */
-const PLAIN_KEYS = ['pansou_url', 'folder_id_quark', 'folder_id_115', 'quark_folders', '115_folders', 'telegram_chat_ids', 'discord_webhook_urls', 'notification_targets'];
+const PLAIN_KEYS = [
+  'pansou_url',
+  'folder_id_quark',
+  'folder_id_115',
+  'quark_folders',
+  '115_folders',
+  'telegram_chat_ids',
+  'discord_webhook_urls',
+  'notification_targets',
+  'smartstrm_webhook_url',
+  'smartstrm_storage_mapping',
+];
 
 /** 读取设置（脱敏回显） */
 settingsRouter.get('/', (_req: Request, res: Response) => {
@@ -42,6 +53,9 @@ settingsRouter.get('/', (_req: Request, res: Response) => {
     discord_webhook_urls: getSetting('discord_webhook_urls') || '',
     notification_targets: targets ? JSON.parse(targets) : ['telegram_chat', 'discord_channel'],
     pansou_url: getSetting('pansou_url') || '',
+    // SmartStrm
+    smartstrm_webhook_url: getSetting('smartstrm_webhook_url') || '',
+    smartstrm_storage_mapping: getSetting('smartstrm_storage_mapping') || '',
   });
 });
 
@@ -80,6 +94,20 @@ settingsRouter.put('/', (req: Request, res: Response) => {
           }
         } catch {
           // 非法 JSON 忽略
+        }
+      } else if (key === 'smartstrm_storage_mapping') {
+        // 校验 JSON 格式
+        const mapping = String(body[key] || '').trim();
+        if (mapping) {
+          try {
+            JSON.parse(mapping);
+            setSetting(key, mapping);
+          } catch {
+            res.status(400).json({ error: 'smartstrm_storage_mapping 必须是合法 JSON 格式' });
+            return;
+          }
+        } else {
+          setSetting(key, '');
         }
       } else {
         setSetting(key, value);

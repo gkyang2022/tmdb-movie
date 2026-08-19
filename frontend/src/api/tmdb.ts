@@ -1,5 +1,5 @@
 import request from './request';
-import type { ListResponse, MediaDetail, SettingsInfo, TransferResult, TrackerTask, SearchResource } from '@/types';
+import type { ListResponse, MediaDetail, SettingsInfo, TransferResult, TrackerTask, SearchResource, SmartStrmStatus } from '@/types';
 
 export const tmdbApi = {
   trending: (type = 'all', page = 1) =>
@@ -73,5 +73,16 @@ export const pansouApi = {
         '/pansou/search',
         { params: { keyword, refresh: refresh ? 1 : 0 } },
       )
+      .then((r) => r.data),
+};
+
+export const smartstrmApi = {
+  status: () => request.get<SmartStrmStatus>('/smartstrm/status').then((r) => r.data),
+  notify: (taskName?: string, contentType?: 'movie' | 'tv' | 'anime') =>
+    request
+      .post<{ success: boolean; message: string }>('/smartstrm/notify', {
+        ...(taskName ? { taskName } : {}),
+        ...(contentType ? { contentType } : {}),
+      })
       .then((r) => r.data),
 };

@@ -51,6 +51,9 @@ export interface SettingsInfo {
   notification_targets: string[];
   // 盘搜
   pansou_url: string;
+  // SmartStrm
+  smartstrm_webhook_url: string;
+  smartstrm_storage_mapping: string;
 }
 
 export interface TrackerTask {
@@ -88,6 +91,10 @@ export interface TransferResult {
   names?: string[];
   error?: string;
   errorType?: 'user' | 'system';
+}
+
+export interface SmartStrmStatus {
+  configured: boolean;
 }
 
 export interface FolderItem {

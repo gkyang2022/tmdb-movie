@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { getSetting, getFolderId } from '../settingsStore.js';
 import { cloudStorageService } from '../services/cloud-storage.service.js';
+import { triggerSmartStrm, inferTaskName } from '../services/smartstrm.service.js';
+import { logger } from '../logger.js';
 
 export const transferRouter = Router();
 
@@ -33,6 +35,17 @@ transferRouter.post('/', async (req: Request, res: Response) => {
       : await cloudStorageService.saveToQuark(cookie, shareUrl, folderId);
 
   if (result.success) {
+    // 转存成功后，异步触发 SmartStrm 刷新（不阻塞转存结果）
+    triggerSmartStrm(inferTaskName(contentType))
+      .then(({ success, message }) => {
+        if (success) {
+          logger.info('[transfer] SmartStrm triggered', { contentType });
+        } else {
+          logger.warn('[transfer] SmartStrm trigger skipped', { reason: message });
+        }
+      })
+      .catch((e) => logger.error('[transfer] SmartStrm trigger error', { e }));
+
     res.json({
       ok: true,
       message: result.message,
