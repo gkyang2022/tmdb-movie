@@ -25,7 +25,7 @@
 
 把下面内容保存为 `docker-compose.yml`，然后运行 `docker compose up -d` 即可。
 
-> ⚠️ 首次部署前，先把 `ADMIN_PASSWORD` 改成你自己的密码。
+> ⚠️ 首次部署默认密码为：admin123 。
 
 ```yaml
 services:
@@ -37,7 +37,6 @@ services:
       - "8009:8008"
     environment:
       - PORT=8008
-      - ADMIN_PASSWORD=你的密码          # ← 改成你自己的密码
       - TMDB_LANGUAGE=zh-CN
       - TZ=Asia/Shanghai
     volumes:
