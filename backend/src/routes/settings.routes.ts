@@ -129,7 +129,8 @@ settingsRouter.put('/', (req: Request, res: Response) => {
 
 /** 测试 Key（不保存） */
 settingsRouter.post('/tmdb/test', async (req: Request, res: Response) => {
-  const key = String(req.body?.api_key || '').trim();
+  // 优先用请求体里的 key；空则回退到当前已配置的 key（settings > env）
+  const key = String(req.body?.api_key || '').trim() || (getSetting('tmdb_api_key') as string) || config.tmdbApiKey;
   if (!key) {
     res.status(400).json({ valid: false, message: '请先填写 API Key' });
     return;
