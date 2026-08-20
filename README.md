@@ -64,7 +64,7 @@ docker compose up -d
 http://<服务器IP>:8081
 ```
 
-用账号 **`admin`** 和你设置的密码登录。
+用账号 **`admin`** + 默认密码 **`admin123`** 登录（首次部署后请尽快在「设置」里修改）。
 
 ---
 
@@ -74,7 +74,7 @@ http://<服务器IP>:8081
 
 ```bash
 git clone https://github.com/gkyang2022/quarkcine.git && cd quarkcine
-# 编辑 docker-compose.yml 修改 ADMIN_PASSWORD
+# 如需自定义密码，在 backend 的 environment 下自行添加一行：- ADMIN_PASSWORD=你的密码（不设则默认 admin123）
 docker compose up -d
 ```
 
